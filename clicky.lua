@@ -15,7 +15,8 @@ local default_settings = T{
     visible = T{ true, },
     opacity = T{ 1.0, },
     window_pos = { x = 350, y = 700 }, -- Default window position
-    thf_window_pos = { x = 510, y = 700 } -- Default THF window position
+    thf_window_pos = { x = 510, y = 700 }, -- Default THF window position
+    buttons = {} -- List of custom buttons
 };
 
 -- Clicky Variables
@@ -26,6 +27,7 @@ local clicky = T{
 local isRendering = false -- Track if rendering should occur
 local show_thf_actions = false -- Track if THF actions should be displayed
 local show_attack_button = false -- Track if Attack Target button should be displayed
+local editing_button_index = nil -- Index of the button being edited
 
 local function UpdateVisibility(visible)
     clicky.settings.visible[1] = visible
@@ -97,7 +99,6 @@ local function render_additional_buttons()
         if imgui.Button('Flee', { 150, 50 }) then
             AshitaCore:GetChatManager():QueueCommand(1, '/ja "Flee" <me>')
         end
-        
 
         -- Allow the window to be moved
         local x, y = imgui.GetWindowPos()
@@ -108,7 +109,19 @@ local function render_additional_buttons()
     end
 end
 
--- Function to render the GUI
+-- Initialize buffers for editing
+local editing_button_name_buf = ffi.new("char[128]", "")
+local editing_button_command_buf = ffi.new("char[256]", "")
+
+local seacom = {
+    name_buffer = { '' },
+    name_buffer_size = 128,
+    command_buffer = { '' },
+    command_buffer_size = 256,
+}
+
+
+--- Function to render the GUI
 local function render_buttons()
     if not clicky.settings.visible[1] then
         return
@@ -130,9 +143,32 @@ local function render_buttons()
     -- Begin the ImGui window without title bar, scrollbars, or resize
     imgui.SetNextWindowBgAlpha(clicky.settings.opacity[1])
     if imgui.Begin('Clicky Buttons', true, windowFlags) then
-        -- Display the buttons 
+        -- Display the THF button 
         if imgui.Button('THF', { 150, 50 }) then
             show_thf_actions = not show_thf_actions
+        end
+
+        -- Display the custom buttons
+        for i, button in ipairs(clicky.settings.buttons) do
+            if imgui.Button(button.name, { 150, 50 }) then
+                AshitaCore:GetChatManager():QueueCommand(1, button.command)
+            end
+
+            -- Check for right-click to start editing
+            if imgui.IsItemHovered() then
+                if imgui.IsMouseClicked(1) then -- 1 is for right-click
+                    editing_button_index = i -- Start editing
+                    seacom.name_buffer[1] = button.name
+                    seacom.command_buffer[1] = button.command
+                    isEditWindowOpen = true -- Open the edit window
+                end
+            end
+        end
+
+        -- Display the plus button to add new buttons
+        if imgui.Button('+', { 150, 50 }) then
+            table.insert(clicky.settings.buttons, { name = 'New Button', command = '' })
+            settings.save()
         end
 
         -- Allow the window to be moved
@@ -167,13 +203,49 @@ local function render_buttons()
     end
 end
 
+-- Function to render the edit window
+local function render_edit_window()
+    if isEditWindowOpen and editing_button_index ~= nil then
+        local button = clicky.settings.buttons[editing_button_index]
+        if imgui.Begin('Edit Button', true, ImGuiWindowFlags_AlwaysAutoResize) then
+            imgui.Text('Button Name:')
+            if imgui.InputText('##EditButtonName', seacom.name_buffer, seacom.name_buffer_size) then
+                button.name = seacom.name_buffer[1]
+            end
+
+            imgui.Text('Button Command:')
+            if imgui.InputText('##EditButtonCommand', seacom.command_buffer, seacom.command_buffer_size) then
+                button.command = seacom.command_buffer[1]
+            end
+
+            if imgui.Button('Save', { 100, 50 }) then
+                clicky.settings.buttons[editing_button_index].name = seacom.name_buffer[1]
+                clicky.settings.buttons[editing_button_index].command = seacom.command_buffer[1]
+                settings.save()
+                isEditWindowOpen = false
+                editing_button_index = nil
+            end
+
+            imgui.SameLine()
+            if imgui.Button('Cancel', { 100, 50 }) then
+                isEditWindowOpen = false
+                editing_button_index = nil
+            end
+
+            imgui.End()
+        end
+    end
+end
+
 -- Integrate with Ashita's ImGui rendering
 ashita.events.register('d3d_present', 'present_cb', function()
     if isRendering then
         render_buttons()
+        render_edit_window()
         imgui.Render()
     end
 end)
+
 
 -- Update the attack button visibility based on the player's target
 ashita.events.register('d3d_present', 'update_target_cb', function()
