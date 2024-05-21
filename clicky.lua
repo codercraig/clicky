@@ -9,6 +9,16 @@ local settings = require('settings');
 local d3d = require('d3d8');
 local ffi = require('ffi');
 local coroutine = require('coroutine');
+local images = require("images");
+local guiimages = images.loadTextures();
+
+local function drawJobIcon(jobID)
+    local total = 22
+    local ratio = 1 / total
+    local iconID = jobID - 1
+
+    imgui.Image(tonumber(ffi.cast("uint32_t", guiimages.jobs)), { 48, 48 }, { ratio * iconID, 0 }, { ratio * iconID + ratio, 1 }, { 1, 1, 1, 1 }, { 0, 0, 0, 0 })
+end
 
 -- Default Settings
 local default_settings = T{
@@ -28,6 +38,7 @@ local isRendering = false -- Track if rendering should occur
 local show_thf_actions = false -- Track if THF actions should be displayed
 local show_attack_button = false -- Track if Attack Target button should be displayed
 local editing_button_index = nil -- Index of the button being edited
+local isEditWindowOpen = false -- Track if the edit window is open
 
 local function UpdateVisibility(visible)
     clicky.settings.visible[1] = visible
@@ -59,16 +70,38 @@ local function has_target()
     return true
 end
 
--- Function to render the additional buttons
-local function render_additional_buttons()
-    -- Make the window movable
+-- Function to render the THF button window
+local function render_thf_button_window()
+    imgui.SetNextWindowPos({ 350, 700 }, ImGuiCond_Once)
+    local windowFlags = bit.bor(
+        ImGuiWindowFlags_NoTitleBar,
+        ImGuiWindowFlags_NoResize,
+        ImGuiWindowFlags_NoScrollbar,
+        ImGuiWindowFlags_AlwaysAutoResize,
+        ImGuiWindowFlags_NoCollapse,
+        ImGuiWindowFlags_NoNav,
+        ImGuiWindowFlags_NoBringToFrontOnFocus
+    )
+
+    if imgui.Begin('THF Button', true, windowFlags) then
+        drawJobIcon(6) -- Draw the THF job icon
+        if imgui.IsItemClicked() then
+            show_thf_actions = not show_thf_actions
+        end
+        imgui.End()
+    end
+end
+
+-- Function to render the THF actions window
+local function render_thf_actions_window()
+    if not show_thf_actions then return end
+
     imgui.SetNextWindowPos({ clicky.settings.thf_window_pos.x, clicky.settings.thf_window_pos.y }, ImGuiCond_Once)
     local windowFlags = bit.bor(
         ImGuiWindowFlags_NoTitleBar,
         ImGuiWindowFlags_NoResize,
         ImGuiWindowFlags_NoScrollbar,
         ImGuiWindowFlags_AlwaysAutoResize,
-        --ImGuiWindowFlags_NoMove,
         ImGuiWindowFlags_NoCollapse,
         ImGuiWindowFlags_NoNav,
         ImGuiWindowFlags_NoBringToFrontOnFocus
@@ -110,9 +143,6 @@ local function render_additional_buttons()
 end
 
 -- Initialize buffers for editing
-local editing_button_name_buf = ffi.new("char[128]", "")
-local editing_button_command_buf = ffi.new("char[256]", "")
-
 local seacom = {
     name_buffer = { '' },
     name_buffer_size = 128,
@@ -120,9 +150,8 @@ local seacom = {
     command_buffer_size = 256,
 }
 
-
---- Function to render the GUI
-local function render_buttons()
+-- Function to render the custom buttons window
+local function render_buttons_window()
     if not clicky.settings.visible[1] then
         return
     end
@@ -143,11 +172,6 @@ local function render_buttons()
     -- Begin the ImGui window without title bar, scrollbars, or resize
     imgui.SetNextWindowBgAlpha(clicky.settings.opacity[1])
     if imgui.Begin('Clicky Buttons', true, windowFlags) then
-        -- Display the THF button 
-        if imgui.Button('THF', { 150, 50 }) then
-            show_thf_actions = not show_thf_actions
-        end
-
         -- Display the custom buttons
         for i, button in ipairs(clicky.settings.buttons) do
             if imgui.Button(button.name, { 150, 50 }) then
@@ -178,28 +202,6 @@ local function render_buttons()
         settings.save()
         
         imgui.End()
-    end
-
-    -- Render additional buttons if the flag is set
-    if show_thf_actions then
-        render_additional_buttons()
-    end
-
-    -- Render the "Attack Target" button next to the player if there is a target
-    if show_attack_button then
-        imgui.SetNextWindowPos({ 500, 550 }, ImGuiCond_Always) -- Adjust position based on your screen resolution and player position
-        if imgui.Begin('Attack Actions', true, windowFlags) then
-            if imgui.Button('Attack', { 100, 50 }) then
-                AshitaCore:GetChatManager():QueueCommand(1, '/attack')
-            end
-            if imgui.Button('Trust', { 100, 50 }) then
-                AshitaCore:GetChatManager():QueueCommand(1, '/ma "Kupofried" <me>')
-            end
-            if imgui.Button('Check', { 100, 50 }) then
-                AshitaCore:GetChatManager():QueueCommand(1, '/check')
-            end
-            imgui.End()
-        end
     end
 end
 
@@ -232,6 +234,46 @@ local function render_edit_window()
                 editing_button_index = nil
             end
 
+            imgui.SameLine()
+            if imgui.Button('Remove', { 100, 50 }) then
+                table.remove(clicky.settings.buttons, editing_button_index)
+                settings.save()
+                isEditWindowOpen = false
+                editing_button_index = nil
+            end
+
+            imgui.End()
+        end
+    end
+end
+
+-- Function to render the attack window
+local function render_attack_window()
+    if show_attack_button then
+        imgui.SetNextWindowPos({ 500, 550 }, ImGuiCond_Once) -- Adjust position based on your screen resolution and player position
+        local windowFlags = bit.bor(
+            ImGuiWindowFlags_NoTitleBar,
+            ImGuiWindowFlags_NoResize,
+            ImGuiWindowFlags_NoScrollbar,
+            ImGuiWindowFlags_AlwaysAutoResize,
+            ImGuiWindowFlags_NoCollapse,
+            ImGuiWindowFlags_NoNav,
+            ImGuiWindowFlags_NoBringToFrontOnFocus
+        )
+        if imgui.Begin('Attack Actions', true, windowFlags) then
+            if imgui.Button('Attack', { 100, 50 }) then
+                AshitaCore:GetChatManager():QueueCommand(1, '/attack')
+            end
+            imgui.SameLine()
+            if imgui.Button('Ranged', { 100, 50 }) then
+                AshitaCore:GetChatManager():QueueCommand(1, '/attack')
+            end
+            if imgui.Button('Trust', { 100, 50 }) then
+                AshitaCore:GetChatManager():QueueCommand(1, '/ma "Kupofried" <me>')
+            end
+            if imgui.Button('Check', { 100, 50 }) then
+                AshitaCore:GetChatManager():QueueCommand(1, '/check')
+            end
             imgui.End()
         end
     end
@@ -240,12 +282,14 @@ end
 -- Integrate with Ashita's ImGui rendering
 ashita.events.register('d3d_present', 'present_cb', function()
     if isRendering then
-        render_buttons()
+        render_buttons_window()
         render_edit_window()
+        render_thf_button_window()
+        render_thf_actions_window()
+        render_attack_window()
         imgui.Render()
     end
 end)
-
 
 -- Update the attack button visibility based on the player's target
 ashita.events.register('d3d_present', 'update_target_cb', function()
