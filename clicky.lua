@@ -24,9 +24,9 @@ end
 local default_settings = T{
     visible = T{ true, },
     opacity = T{ 1.0, },
-    window_pos = { x = 350, y = 700 }, -- Default window position
-    thf_window_pos = { x = 510, y = 700 }, -- Default THF window position
-    buttons = {} -- List of custom buttons
+    windows = { -- List of windows
+        { id = 1, visible = true, opacity = 1.0, window_pos = { x = 350, y = 700 }, buttons = {} }
+    }
 };
 
 -- Clicky Variables
@@ -39,10 +39,17 @@ local show_thf_actions = false -- Track if THF actions should be displayed
 local show_attack_button = false -- Track if Attack Target button should be displayed
 local editing_button_index = nil -- Index of the button being edited
 local isEditWindowOpen = false -- Track if the edit window is open
+local editing_window_id = nil -- Track which window is being edited
+local edit_mode = false -- Track if edit mode is active
 
-local function UpdateVisibility(visible)
-    clicky.settings.visible[1] = visible
-    settings.save()
+local function UpdateVisibility(window_id, visible)
+    for _, window in ipairs(clicky.settings.windows) do
+        if window.id == window_id then
+            window.visible = visible
+            settings.save()
+            return
+        end
+    end
 end
 
 -- Function to execute a sequence of commands with delays
@@ -153,7 +160,8 @@ local seacom = {
 -- Function to render the edit window
 local function render_edit_window()
     if isEditWindowOpen and editing_button_index ~= nil then
-        local button = clicky.settings.buttons[editing_button_index]
+        local window = clicky.settings.windows[editing_window_id]
+        local button = window.buttons[editing_button_index]
         if imgui.Begin('Edit Button', true, ImGuiWindowFlags_AlwaysAutoResize) then
             imgui.Text('Button Name:')
             if imgui.InputText('##EditButtonName', seacom.name_buffer, seacom.name_buffer_size) then
@@ -166,34 +174,38 @@ local function render_edit_window()
             end
 
             if imgui.Button('Save', { 75, 50 }) then
-                clicky.settings.buttons[editing_button_index].name = seacom.name_buffer[1]
-                clicky.settings.buttons[editing_button_index].command = seacom.command_buffer[1]
+                button.name = seacom.name_buffer[1]
+                button.command = seacom.command_buffer[1]
                 settings.save()
                 isEditWindowOpen = false
                 editing_button_index = nil
+                editing_window_id = nil
             end
 
             imgui.SameLine()
             if imgui.Button('Cancel', { 75, 50 }) then
                 isEditWindowOpen = false
                 editing_button_index = nil
+                editing_window_id = nil
             end
 
             imgui.SameLine()
             if imgui.Button('Remove', { 75, 50 }) then
-                table.remove(clicky.settings.buttons, editing_button_index)
+                table.remove(window.buttons, editing_button_index)
                 settings.save()
                 isEditWindowOpen = false
                 editing_button_index = nil
+                editing_window_id = nil
             end
 
             imgui.SameLine()
             if imgui.Button('>', { 50, 50 }) then
                 local newButtonPos = { x = button.pos.x + 1, y = button.pos.y }
-                table.insert(clicky.settings.buttons, { name = 'New', command = '', pos = newButtonPos })
+                table.insert(window.buttons, { name = 'New', command = '', pos = newButtonPos })
                 settings.save()
                 isEditWindowOpen = false
                 editing_button_index = nil
+                editing_window_id = nil
             end
 
             imgui.End()
@@ -202,14 +214,13 @@ local function render_edit_window()
 end
 
 -- Function to render the custom buttons window
-local function render_buttons_window()
-    if not clicky.settings.visible[1] then
+local function render_buttons_window(window)
+    if not window.visible then
         return
     end
 
-    -- Make the main window movable
-    imgui.SetNextWindowPos({ clicky.settings.window_pos.x, clicky.settings.window_pos.y }, ImGuiCond_Once)
-    -- Set window flags: No title bar, no resize, no scrollbar, always auto resize
+    -- Make the main window movable only in edit mode
+    imgui.SetNextWindowPos({ window.window_pos.x, window.window_pos.y }, ImGuiCond_Once)
     local windowFlags = bit.bor(
         ImGuiWindowFlags_NoTitleBar,
         ImGuiWindowFlags_NoResize,
@@ -217,91 +228,78 @@ local function render_buttons_window()
         ImGuiWindowFlags_AlwaysAutoResize,
         ImGuiWindowFlags_NoCollapse,
         ImGuiWindowFlags_NoNav,
-        ImGuiWindowFlags_NoBringToFrontOnFocus
+        ImGuiWindowFlags_NoBringToFrontOnFocus,
+        (edit_mode and 0 or ImGuiWindowFlags_NoMove) -- Disable moving the window if not in edit mode
     )
+    
+    if not edit_mode then
+        windowFlags = bit.bor(windowFlags, ImGuiWindowFlags_NoBackground, ImGuiWindowFlags_NoDecoration)
+    end
 
     -- Begin the ImGui window without title bar, scrollbars, or resize
-    imgui.SetNextWindowBgAlpha(clicky.settings.opacity[1])
-    if imgui.Begin('Clicky Buttons', true, windowFlags) then
+    imgui.SetNextWindowBgAlpha(edit_mode and window.opacity or 0.0)
+    if imgui.Begin('Clicky Buttons ' .. window.id, true, windowFlags) then
+        if edit_mode then
+            -- Display the plus and close buttons at the top
+            imgui.SetCursorPosY(0)
+            if imgui.Button('+', { 25, 25 }) then
+                local max_y = 0
+                for _, button in ipairs(window.buttons) do
+                    if button.pos.y > max_y then
+                        max_y = button.pos.y
+                    end
+                end
+                table.insert(window.buttons, { name = 'New', command = '', pos = { x = 0, y = max_y + 1 } })
+                settings.save()
+            end
+
+            imgui.SameLine()
+            if imgui.Button('x', { 25, 25 }) then
+                window.visible = false
+                settings.save()
+            end
+        end
+
         -- Display the custom buttons
-        for i, button in ipairs(clicky.settings.buttons) do
+        for i, button in ipairs(window.buttons) do
             if button.pos == nil then
-                button.pos = { x = 0, y = i - 1 }
+                button.pos = { x = 0, y = i }
             end
 
             imgui.SetCursorPosX(button.pos.x * 80)
-            imgui.SetCursorPosY(button.pos.y * 55)
+            imgui.SetCursorPosY((button.pos.y + 1) * 55)  -- Offset by 1 row to make space for "+" and "x"
             if imgui.Button(button.name, { 70, 50 }) then
                 AshitaCore:GetChatManager():QueueCommand(1, button.command)
             end
 
             -- Check for right-click to start editing
-            if imgui.IsItemHovered() then
+            if imgui.IsItemHovered() and edit_mode then
                 if imgui.IsMouseClicked(1) then -- 1 is for right-click
                     editing_button_index = i -- Start editing
                     seacom.name_buffer[1] = button.name
                     seacom.command_buffer[1] = button.command
                     isEditWindowOpen = true -- Open the edit window
+                    editing_window_id = window.id -- Track which window is being edited
                 end
             end
         end
 
-        -- Display the plus button to add new buttons vertically
-        local max_y = 0
-        for _, button in ipairs(clicky.settings.buttons) do
-            if button.pos.y > max_y then
-                max_y = button.pos.y
-            end
-        end
-
-        imgui.SetCursorPosX(0)
-        imgui.SetCursorPosY((max_y + 1) * 55)
-        if imgui.Button('+', { 70, 50 }) then
-            table.insert(clicky.settings.buttons, { name = 'New', command = '', pos = { x = 0, y = max_y + 1 } })
-            settings.save()
-        end
-
-        -- Display the right arrow button to add new buttons horizontally for each row
-        local max_x = {}
-        for _, button in ipairs(clicky.settings.buttons) do
-            if button.pos.y > #max_x then
-                max_x[button.pos.y] = button.pos.x
-            else
-                max_x[button.pos.y] = math.max(max_x[button.pos.y] or 0, button.pos.x)
-            end
-        end
-
-        -- for y, x in pairs(max_x) do
-        --     imgui.SetCursorPosX((x + 1) * 80)
-        --     imgui.SetCursorPosY(y * 55)
-        --     if imgui.Button('>', { 20, 50 }) then
-        --         table.insert(clicky.settings.buttons, { name = 'New Button', command = '', pos = { x = x + 1, y = y } })
-        --         settings.save()
-        --     end
-        -- end
-
         -- Allow the window to be moved
         local x, y = imgui.GetWindowPos()
-        clicky.settings.window_pos.x = x
-        clicky.settings.window_pos.y = y
+        window.window_pos.x = x
+        window.window_pos.y = y
         settings.save()
         
         imgui.End()
     end
 end
 
--- Integrate with Ashita's ImGui rendering
-ashita.events.register('d3d_present', 'present_cb', function()
-    if isRendering then
-        render_buttons_window()
-        render_edit_window()
-        render_thf_button_window()
-        render_thf_actions_window()
-        render_attack_window()
-        imgui.Render()
-    end
-end)
-
+-- Function to add a new window
+local function add_new_window()
+    local new_id = #clicky.settings.windows + 1
+    table.insert(clicky.settings.windows, { id = new_id, visible = true, opacity = 1.0, window_pos = { x = 350 + (new_id - 1) * 20, y = 700 + (new_id - 1) * 20 }, buttons = {} })
+    settings.save()
+end
 
 -- Function to render the attack window
 local function render_attack_window()
@@ -320,8 +318,9 @@ local function render_attack_window()
             if imgui.Button('Attack', { 100, 50 }) then
                 AshitaCore:GetChatManager():QueueCommand(1, '/attack')
             end
+          
             if imgui.Button('Ranged', { 100, 50 }) then
-                AshitaCore:GetChatManager():QueueCommand(1, '/attack')
+                AshitaCore:GetChatManager():QueueCommand(1, '/ra <t>')
             end
             if imgui.Button('Trust', { 100, 50 }) then
                 AshitaCore:GetChatManager():QueueCommand(1, '/ma "Kupofried" <me>')
@@ -337,7 +336,9 @@ end
 -- Integrate with Ashita's ImGui rendering
 ashita.events.register('d3d_present', 'present_cb', function()
     if isRendering then
-        render_buttons_window()
+        for _, window in ipairs(clicky.settings.windows) do
+            render_buttons_window(window)
+        end
         render_edit_window()
         render_thf_button_window()
         render_thf_actions_window()
@@ -351,7 +352,7 @@ ashita.events.register('d3d_present', 'update_target_cb', function()
     show_attack_button = has_target()
 end)
 
--- Handle commands to show/hide the buttons
+-- Handle commands to show/hide the buttons and toggle edit mode
 ashita.events.register('command', 'command_cb', function (e)
     local args = e.command:args()
     if #args == 0 or not args[1]:any('/clicky') then
@@ -363,20 +364,46 @@ ashita.events.register('command', 'command_cb', function (e)
 
     -- Handle: /clicky show
     if #args >= 2 and args[2]:any('show') then
-        UpdateVisibility(true)
+        UpdateVisibility(tonumber(args[3]) or 1, true)
         isRendering = true
         return
     end
 
     -- Handle: /clicky hide
     if #args >= 2 and args[2]:any('hide') then
-        UpdateVisibility(false)
+        UpdateVisibility(tonumber(args[3]) or 1, false)
         isRendering = false
         return
     end
 
+    -- Handle: /clicky addnew
+    if #args >= 2 and args[2]:any('addnew') then
+        add_new_window()
+        return
+    end
+
+    -- Handle: /clicky edit on
+    if #args >= 2 and args[2]:any('edit') and args[3]:any('on') then
+        edit_mode = true
+        for _, window in ipairs(clicky.settings.windows) do
+            window.opacity = 1.0
+        end
+        settings.save()
+        return
+    end
+
+    -- Handle: /clicky edit off
+    if #args >= 2 and args[2]:any('edit') and args[3]:any('off') then
+        edit_mode = false
+        for _, window in ipairs(clicky.settings.windows) do
+            window.opacity = 0.0
+        end
+        settings.save()
+        return
+    end
+
     -- Unhandled: Print help information
-    print(chat.header(addon.name):append(chat.error('Usage: /clicky [show|hide]')))
+    print(chat.header(addon.name):append(chat.error('Usage: /clicky [show|hide|addnew|edit] [on|off] [window_id]')))
 end)
 
 -- Save settings on unload
@@ -385,6 +412,7 @@ ashita.events.register('unload', 'unload_cb', function ()
 end)
 
 -- Ensure visibility when initializing
-UpdateVisibility(clicky.settings.visible[1])
-isRendering = clicky.settings.visible[1]
-
+for _, window in ipairs(clicky.settings.windows) do
+    UpdateVisibility(window.id, window.visible)
+end
+isRendering = true
