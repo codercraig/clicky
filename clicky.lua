@@ -150,25 +150,58 @@ local seacom = {
     command_buffer_size = 256,
 }
 
--- local function create_horizontal_button(button_index)
---     local button = clicky.settings.buttons[button_index]
---     local newButtonPos = { x = button.pos.x + 1, y = button.pos.y }
---     table.insert(clicky.settings.buttons, { name = 'New Button', command = '', pos = newButtonPos })
---     settings.save()
--- end
+-- Function to render the edit window
+local function render_edit_window()
+    if isEditWindowOpen and editing_button_index ~= nil then
+        local button = clicky.settings.buttons[editing_button_index]
+        if imgui.Begin('Edit Button', true, ImGuiWindowFlags_AlwaysAutoResize) then
+            imgui.Text('Button Name:')
+            if imgui.InputText('##EditButtonName', seacom.name_buffer, seacom.name_buffer_size) then
+                button.name = seacom.name_buffer[1]
+            end
 
--- local function create_vertical_button()
---     local max_y = 0
---     for _, button in ipairs(clicky.settings.buttons) do
---         if button.pos.y > max_y then
---             max_y = button.pos.y
---         end
---     end
+            imgui.Text('Button Command:')
+            if imgui.InputText('##EditButtonCommand', seacom.command_buffer, seacom.command_buffer_size) then
+                button.command = seacom.command_buffer[1]
+            end
 
---     table.insert(clicky.settings.buttons, { name = 'New Button', command = '', pos = { x = 0, y = max_y + 1 } })
---     settings.save()
--- end
+            if imgui.Button('Save', { 75, 50 }) then
+                clicky.settings.buttons[editing_button_index].name = seacom.name_buffer[1]
+                clicky.settings.buttons[editing_button_index].command = seacom.command_buffer[1]
+                settings.save()
+                isEditWindowOpen = false
+                editing_button_index = nil
+            end
 
+            imgui.SameLine()
+            if imgui.Button('Cancel', { 75, 50 }) then
+                isEditWindowOpen = false
+                editing_button_index = nil
+            end
+
+            imgui.SameLine()
+            if imgui.Button('Remove', { 75, 50 }) then
+                table.remove(clicky.settings.buttons, editing_button_index)
+                settings.save()
+                isEditWindowOpen = false
+                editing_button_index = nil
+            end
+
+            imgui.SameLine()
+            if imgui.Button('>', { 50, 50 }) then
+                local newButtonPos = { x = button.pos.x + 1, y = button.pos.y }
+                table.insert(clicky.settings.buttons, { name = 'New', command = '', pos = newButtonPos })
+                settings.save()
+                isEditWindowOpen = false
+                editing_button_index = nil
+            end
+
+            imgui.End()
+        end
+    end
+end
+
+-- Function to render the custom buttons window
 local function render_buttons_window()
     if not clicky.settings.visible[1] then
         return
@@ -190,25 +223,15 @@ local function render_buttons_window()
     -- Begin the ImGui window without title bar, scrollbars, or resize
     imgui.SetNextWindowBgAlpha(clicky.settings.opacity[1])
     if imgui.Begin('Clicky Buttons', true, windowFlags) then
-        -- Calculate max_x and max_y for existing buttons
-        local max_x = {}
-        for _, button in ipairs(clicky.settings.buttons) do
-            if button.pos.y > #max_x then
-                max_x[button.pos.y] = button.pos.x
-            else
-                max_x[button.pos.y] = math.max(max_x[button.pos.y] or 0, button.pos.x)
-            end
-        end
-
         -- Display the custom buttons
         for i, button in ipairs(clicky.settings.buttons) do
             if button.pos == nil then
                 button.pos = { x = 0, y = i - 1 }
             end
 
-            imgui.SetCursorPosX(button.pos.x * 160)
-            imgui.SetCursorPosY(button.pos.y * 60)
-            if imgui.Button(button.name, { 150, 50 }) then
+            imgui.SetCursorPosX(button.pos.x * 80)
+            imgui.SetCursorPosY(button.pos.y * 55)
+            if imgui.Button(button.name, { 70, 50 }) then
                 AshitaCore:GetChatManager():QueueCommand(1, button.command)
             end
 
@@ -232,21 +255,30 @@ local function render_buttons_window()
         end
 
         imgui.SetCursorPosX(0)
-        imgui.SetCursorPosY((max_y + 1) * 60)
-        if imgui.Button('+', { 150, 50 }) then
-            table.insert(clicky.settings.buttons, { name = 'New Button', command = '', pos = { x = 0, y = max_y + 1 } })
+        imgui.SetCursorPosY((max_y + 1) * 55)
+        if imgui.Button('+', { 70, 50 }) then
+            table.insert(clicky.settings.buttons, { name = 'New', command = '', pos = { x = 0, y = max_y + 1 } })
             settings.save()
         end
 
         -- Display the right arrow button to add new buttons horizontally for each row
-        for y, x in pairs(max_x) do
-            imgui.SetCursorPosX((x + 1) * 160)
-            imgui.SetCursorPosY(y * 60)
-            if imgui.Button('>', { 25, 50 }) then
-                table.insert(clicky.settings.buttons, { name = 'New Button', command = '', pos = { x = x + 1, y = y } })
-                settings.save()
+        local max_x = {}
+        for _, button in ipairs(clicky.settings.buttons) do
+            if button.pos.y > #max_x then
+                max_x[button.pos.y] = button.pos.x
+            else
+                max_x[button.pos.y] = math.max(max_x[button.pos.y] or 0, button.pos.x)
             end
         end
+
+        -- for y, x in pairs(max_x) do
+        --     imgui.SetCursorPosX((x + 1) * 80)
+        --     imgui.SetCursorPosY(y * 55)
+        --     if imgui.Button('>', { 20, 50 }) then
+        --         table.insert(clicky.settings.buttons, { name = 'New Button', command = '', pos = { x = x + 1, y = y } })
+        --         settings.save()
+        --     end
+        -- end
 
         -- Allow the window to be moved
         local x, y = imgui.GetWindowPos()
@@ -258,49 +290,18 @@ local function render_buttons_window()
     end
 end
 
-
-
--- Function to render the edit window
-local function render_edit_window()
-    if isEditWindowOpen and editing_button_index ~= nil then
-        local button = clicky.settings.buttons[editing_button_index]
-        if imgui.Begin('Edit Button', true, ImGuiWindowFlags_AlwaysAutoResize) then
-            imgui.Text('Button Name:')
-            if imgui.InputText('##EditButtonName', seacom.name_buffer, seacom.name_buffer_size) then
-                button.name = seacom.name_buffer[1]
-            end
-
-            imgui.Text('Button Command:')
-            if imgui.InputText('##EditButtonCommand', seacom.command_buffer, seacom.command_buffer_size) then
-                button.command = seacom.command_buffer[1]
-            end
-
-            if imgui.Button('Save', { 100, 50 }) then
-                clicky.settings.buttons[editing_button_index].name = seacom.name_buffer[1]
-                clicky.settings.buttons[editing_button_index].command = seacom.command_buffer[1]
-                settings.save()
-                isEditWindowOpen = false
-                editing_button_index = nil
-            end
-
-            imgui.SameLine()
-            if imgui.Button('Cancel', { 100, 50 }) then
-                isEditWindowOpen = false
-                editing_button_index = nil
-            end
-
-            imgui.SameLine()
-            if imgui.Button('Remove', { 100, 50 }) then
-                table.remove(clicky.settings.buttons, editing_button_index)
-                settings.save()
-                isEditWindowOpen = false
-                editing_button_index = nil
-            end
-
-            imgui.End()
-        end
+-- Integrate with Ashita's ImGui rendering
+ashita.events.register('d3d_present', 'present_cb', function()
+    if isRendering then
+        render_buttons_window()
+        render_edit_window()
+        render_thf_button_window()
+        render_thf_actions_window()
+        render_attack_window()
+        imgui.Render()
     end
-end
+end)
+
 
 -- Function to render the attack window
 local function render_attack_window()
@@ -319,7 +320,6 @@ local function render_attack_window()
             if imgui.Button('Attack', { 100, 50 }) then
                 AshitaCore:GetChatManager():QueueCommand(1, '/attack')
             end
-            imgui.SameLine()
             if imgui.Button('Ranged', { 100, 50 }) then
                 AshitaCore:GetChatManager():QueueCommand(1, '/attack')
             end
