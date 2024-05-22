@@ -1,83 +1,52 @@
-Clicky
-Clicky is an addon for Final Fantasy XI that provides customizable buttons to perform various in-game actions. It leverages ImGui for rendering a user interface that allows players to execute commands quickly.
+# Clicky
 
-Author
-Author: Oxos
-Version: 1.0
-Description: Customizable Buttons for Final Fantasy XI.
-Requirements
-Ashita: This addon requires Ashita, a third-party tool for Final Fantasy XI, to function correctly.
-Features
-Customizable Buttons: Add buttons to perform various actions in the game.
-Movable Windows: The main button window and additional action windows are movable and their positions are saved.
-Conditional Display: Show specific buttons based on certain conditions (e.g., when a target is selected).
-Installation
-Download: Download the Clicky addon files.
-Extract: Extract the files into your Ashita\addons directory.
-Enable: Enable the addon in your Ashita configuration.
-Usage
-Commands:
-/clicky show: Show the Clicky buttons.
-/clicky hide: Hide the Clicky buttons.
-Configuration
-The addon uses a settings file to manage its configuration. The default settings are:
+**Author:** Oxos  
+**Version:** 1.0  
+**Description:** Customizable Buttons for Final Fantasy XI.
 
-lua
-Copy code
-local default_settings = T{
-    visible = T{ true, },
-    opacity = T{ 1.0, },
-    window_pos = { x = 350, y = 700 }, -- Default window position
-    thf_window_pos = { x = 510, y = 700 } -- Default THF window position
-};
-Code Overview
-Initialization
-The addon initializes by loading the settings and setting up event handlers for rendering and command handling.
-Functions
-UpdateVisibility(visible)
-Updates the visibility of the main window and saves the settings.
+## Overview
 
-execute_commands(commands, delay)
-Executes a sequence of commands with a specified delay between each command.
+Clicky is an addon for Final Fantasy XI that allows players to create and customize buttons for various in-game actions. The buttons can be arranged in multiple windows, and players can toggle edit mode to modify the layout and commands of the buttons.
 
-has_target()
-Checks if the player has a target selected.
+## Features
 
-render_additional_buttons()
-Renders additional action buttons for the "THF" actions. These buttons are movable.
+- Create multiple windows with custom buttons.
+- Edit button names and commands.
+- Add new buttons horizontally or vertically.
+- Toggle edit mode to show or hide the "+", "x" buttons, and allow window movement.
+- Automatically saves the button configuration.
 
-render_buttons()
-Renders the main GUI buttons and conditionally displays additional buttons based on user interaction and game state.
+## Commands
 
-Event Handlers
-d3d_present: Handles the rendering of buttons every frame.
-update_target_cb: Updates the visibility of the "Attack Target" button based on the player's target.
-command_cb: Handles /clicky commands to show or hide the buttons.
-unload_cb: Saves the settings when the addon is unloaded.
-Example
-Here is an example of how the buttons and additional action windows are rendered:
+- `/clicky show [window_id]` - Show a specific window.
+- `/clicky hide [window_id]` - Hide a specific window.
+- `/clicky addnew` - Add a new window.
+- `/clicky edit on` - Enable edit mode.
+- `/clicky edit off` - Disable edit mode.
 
-lua
-Copy code
-if imgui.Begin('Clicky Buttons', true, windowFlags) then
-    if imgui.Button('THF', { 150, 50 }) then
-        show_thf_actions = not show_thf_actions
-    end
+## Installation
 
-    -- Allow the window to be moved
-    local x, y = imgui.GetWindowPos()
-    clicky.settings.window_pos.x = x
-    clicky.settings.window_pos.y = y
-    settings.save()
+1. Download the latest release of Clicky.
+2. Extract the contents to your `Ashita\addons` directory.
+3. Load the addon in-game using the Ashita command: `/addon load clicky`.
 
-    imgui.End()
-end
+## Usage
 
-if show_thf_actions then
-    render_additional_buttons()
-end
-Notes
-The buttons for "THF" actions include "Sneak Attack", "Trick Attack", "WS", "Steal", "Mug", "Hide", and "Flee".
-The "Attack Target" button appears next to the player when a target is selected.
-Support
-For support and further assistance, please refer to the Ashita documentation and community forums.
+### Basic Usage
+
+1. Load the addon using the command: `/addon load clicky`.
+2. Use `/clicky addnew` to create a new window.
+3. Use `/clicky edit on` to enable edit mode.
+4. Right-click on a button to edit its name and command.
+5. Use the "+" button to add new buttons vertically.
+6. Use the "x" button to close a window.
+7. Use `/clicky edit off` to disable edit mode and hide the edit controls.
+
+### Example
+
+```plaintext
+/clicky show 1
+/clicky hide 1
+/clicky addnew
+/clicky edit on
+/clicky edit off
