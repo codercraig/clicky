@@ -150,7 +150,25 @@ local seacom = {
     command_buffer_size = 256,
 }
 
--- Function to render the custom buttons window
+-- local function create_horizontal_button(button_index)
+--     local button = clicky.settings.buttons[button_index]
+--     local newButtonPos = { x = button.pos.x + 1, y = button.pos.y }
+--     table.insert(clicky.settings.buttons, { name = 'New Button', command = '', pos = newButtonPos })
+--     settings.save()
+-- end
+
+-- local function create_vertical_button()
+--     local max_y = 0
+--     for _, button in ipairs(clicky.settings.buttons) do
+--         if button.pos.y > max_y then
+--             max_y = button.pos.y
+--         end
+--     end
+
+--     table.insert(clicky.settings.buttons, { name = 'New Button', command = '', pos = { x = 0, y = max_y + 1 } })
+--     settings.save()
+-- end
+
 local function render_buttons_window()
     if not clicky.settings.visible[1] then
         return
@@ -172,8 +190,24 @@ local function render_buttons_window()
     -- Begin the ImGui window without title bar, scrollbars, or resize
     imgui.SetNextWindowBgAlpha(clicky.settings.opacity[1])
     if imgui.Begin('Clicky Buttons', true, windowFlags) then
+        -- Calculate max_x and max_y for existing buttons
+        local max_x = {}
+        for _, button in ipairs(clicky.settings.buttons) do
+            if button.pos.y > #max_x then
+                max_x[button.pos.y] = button.pos.x
+            else
+                max_x[button.pos.y] = math.max(max_x[button.pos.y] or 0, button.pos.x)
+            end
+        end
+
         -- Display the custom buttons
         for i, button in ipairs(clicky.settings.buttons) do
+            if button.pos == nil then
+                button.pos = { x = 0, y = i - 1 }
+            end
+
+            imgui.SetCursorPosX(button.pos.x * 160)
+            imgui.SetCursorPosY(button.pos.y * 60)
             if imgui.Button(button.name, { 150, 50 }) then
                 AshitaCore:GetChatManager():QueueCommand(1, button.command)
             end
@@ -189,10 +223,29 @@ local function render_buttons_window()
             end
         end
 
-        -- Display the plus button to add new buttons
+        -- Display the plus button to add new buttons vertically
+        local max_y = 0
+        for _, button in ipairs(clicky.settings.buttons) do
+            if button.pos.y > max_y then
+                max_y = button.pos.y
+            end
+        end
+
+        imgui.SetCursorPosX(0)
+        imgui.SetCursorPosY((max_y + 1) * 60)
         if imgui.Button('+', { 150, 50 }) then
-            table.insert(clicky.settings.buttons, { name = 'New Button', command = '' })
+            table.insert(clicky.settings.buttons, { name = 'New Button', command = '', pos = { x = 0, y = max_y + 1 } })
             settings.save()
+        end
+
+        -- Display the right arrow button to add new buttons horizontally for each row
+        for y, x in pairs(max_x) do
+            imgui.SetCursorPosX((x + 1) * 160)
+            imgui.SetCursorPosY(y * 60)
+            if imgui.Button('>', { 25, 50 }) then
+                table.insert(clicky.settings.buttons, { name = 'New Button', command = '', pos = { x = x + 1, y = y } })
+                settings.save()
+            end
         end
 
         -- Allow the window to be moved
@@ -204,6 +257,8 @@ local function render_buttons_window()
         imgui.End()
     end
 end
+
+
 
 -- Function to render the edit window
 local function render_edit_window()
@@ -332,3 +387,4 @@ end)
 -- Ensure visibility when initializing
 UpdateVisibility(clicky.settings.visible[1])
 isRendering = clicky.settings.visible[1]
+
