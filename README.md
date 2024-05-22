@@ -37,7 +37,7 @@ Clicky is an addon for Final Fantasy XI that allows players to create and custom
 1. Load the addon using the command: `/addon load clicky`.
 2. Use `/clicky addnew` to create a new window.
 3. Use `/clicky edit on` to enable edit mode.
-4. Right-click on a button to edit its name and command.
+4. Right-click on a button to edit its name and command - you can add new buttons horizontally from here which will create next to the button being editted.
 5. Use the "+" button to add new buttons vertically.
 6. Use the "x" button to close a window.
 7. Use `/clicky edit off` to disable edit mode and hide the edit controls.
