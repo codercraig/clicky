@@ -126,7 +126,7 @@ local function save_job_settings(settings_table, job)
     if not success then
         print(string.format('Failed to save settings for job: %s (%d), error: %s', job_name, job, err))
     else
-        print(string.format('Saved settings for job: %s (%d)', job_name, job))  -- Debug print statement
+        --print(string.format('Saved settings for job: %s (%d)', job_name, job))  -- Debug print statement
     end
 end
 
@@ -270,7 +270,7 @@ local function render_edit_window()
                 editing_button_index = nil
                 editing_window_id = nil
                 if not debug_save then
-                    print("Saving settings for job ID:", last_job_id)
+                    --print("Saving settings for job ID:", last_job_id)
                     debug_save = true
                 end
             end
