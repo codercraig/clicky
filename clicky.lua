@@ -266,9 +266,6 @@ local function render_edit_window()
                 button.name = seacom.name_buffer[1]
                 button.command = seacom.command_buffer[1]
                 save_job_settings(clicky.settings, last_job_id)
-                isEditWindowOpen = false
-                editing_button_index = nil
-                editing_window_id = nil
                 if not debug_save then
                     --print("Saving settings for job ID:", last_job_id)
                     debug_save = true
@@ -276,13 +273,7 @@ local function render_edit_window()
             end
 
             imgui.SameLine()
-            if imgui.Button('Cancel', { 75, 50 }) then
-                isEditWindowOpen = false
-                editing_button_index = nil
-                editing_window_id = nil
-            end
-
-            imgui.SameLine()
+            
             if imgui.Button('Remove', { 75, 50 }) then
                 table.remove(window.buttons, editing_button_index)
                 save_job_settings(clicky.settings, last_job_id)
@@ -291,56 +282,105 @@ local function render_edit_window()
                 editing_window_id = nil
             end
 
-            if imgui.Button('<', { 50, 50 }) then
-                local newButtonPos = { x = button.pos.x - 1, y = button.pos.y }
-                if not button_exists_at_position(window.buttons, newButtonPos) then
-                    table.insert(window.buttons, { name = 'New', command = '', pos = newButtonPos })
-                    save_job_settings(clicky.settings, last_job_id)
-                end
-                isEditWindowOpen = false
-                editing_button_index = nil
-                editing_window_id = nil
-            end
             imgui.SameLine()
-            if imgui.Button('>', { 50, 50 }) then
-                local newButtonPos = { x = button.pos.x + 1, y = button.pos.y }
-                if not button_exists_at_position(window.buttons, newButtonPos) then
-                    table.insert(window.buttons, { name = 'New', command = '', pos = newButtonPos })
-                    save_job_settings(clicky.settings, last_job_id)
-                end
+            if imgui.Button('Close', { 75, 50 }) then
                 isEditWindowOpen = false
                 editing_button_index = nil
                 editing_window_id = nil
             end
 
+            imgui.Separator()
+
+            -- Movement Buttons
+            if imgui.Button('<', { 50, 50 }) then
+                if button.pos.x > 0 then
+                    local newButtonPos = { x = button.pos.x - 1, y = button.pos.y }
+                    if not button_exists_at_position(window.buttons, newButtonPos) then
+                        button.pos = newButtonPos
+                        save_job_settings(clicky.settings, last_job_id)
+                    end
+                end
+            end
+
             imgui.SameLine()
-            if imgui.Button('^', { 50, 50 }) then
-                local newButtonPos = { x = button.pos.x, y = button.pos.y - 1 }
+            if imgui.Button('>', { 50, 50 }) then
+                local newButtonPos = { x = button.pos.x + 1, y = button.pos.y }
                 if not button_exists_at_position(window.buttons, newButtonPos) then
-                    table.insert(window.buttons, { name = 'New', command = '', pos = newButtonPos })
+                    button.pos = newButtonPos
                     save_job_settings(clicky.settings, last_job_id)
                 end
-                isEditWindowOpen = false
-                editing_button_index = nil
-                editing_window_id = nil
+            end
+
+            imgui.SameLine()
+            if imgui.Button('^', { 50, 50 }) then
+                if button.pos.y > 0 then
+                    local newButtonPos = { x = button.pos.x, y = button.pos.y - 1 }
+                    if not button_exists_at_position(window.buttons, newButtonPos) then
+                        button.pos = newButtonPos
+                        save_job_settings(clicky.settings, last_job_id)
+                    end
+                end
             end
 
             imgui.SameLine()
             if imgui.Button('v', { 50, 50 }) then
                 local newButtonPos = { x = button.pos.x, y = button.pos.y + 1 }
                 if not button_exists_at_position(window.buttons, newButtonPos) then
+                    button.pos = newButtonPos
+                    save_job_settings(clicky.settings, last_job_id)
+                end
+            end
+
+            imgui.Separator()
+
+            -- New Button Creation
+            if imgui.Button('+<', { 50, 50 }) then
+                if button.pos.x > 0 then
+                    local newButtonPos = { x = button.pos.x - 1, y = button.pos.y }
+                    if not button_exists_at_position(window.buttons, newButtonPos) then
+                        table.insert(window.buttons, { name = 'New', command = '', pos = newButtonPos })
+                        save_job_settings(clicky.settings, last_job_id)
+                    end
+                end
+            end
+
+            imgui.SameLine()
+            if imgui.Button('+>', { 50, 50 }) then
+                local newButtonPos = { x = button.pos.x + 1, y = button.pos.y }
+                if not button_exists_at_position(window.buttons, newButtonPos) then
                     table.insert(window.buttons, { name = 'New', command = '', pos = newButtonPos })
                     save_job_settings(clicky.settings, last_job_id)
                 end
-                isEditWindowOpen = false
-                editing_button_index = nil
-                editing_window_id = nil
+            end
+
+            imgui.SameLine()
+            if imgui.Button('+^', { 50, 50 }) then
+                if button.pos.y > 0 then
+                    local newButtonPos = { x = button.pos.x, y = button.pos.y - 1 }
+                    if not button_exists_at_position(window.buttons, newButtonPos) then
+                        table.insert(window.buttons, { name = 'New', command = '', pos = newButtonPos })
+                        save_job_settings(clicky.settings, last_job_id)
+                    end
+                end
+            end
+
+            imgui.SameLine()
+            if imgui.Button('+v', { 50, 50 }) then
+                local newButtonPos = { x = button.pos.x, y = button.pos.y + 1 }
+                if not button_exists_at_position(window.buttons, newButtonPos) then
+                    table.insert(window.buttons, { name = 'New', command = '', pos = newButtonPos })
+                    save_job_settings(clicky.settings, last_job_id)
+                end
             end
 
             imgui.End()
         end
     end
 end
+
+
+
+
 
 local prev_window_pos = { x = nil, y = nil }
 
