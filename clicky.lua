@@ -20,13 +20,13 @@ local jobIconMapping = {
     [5] = 'RDM',
     [6] = 'THF',
     [7] = 'PLD',
-    [8] = 'DRG',
+    [8] = 'DRK',
     [9] = 'BST',
     [10] = 'BRD',
     [11] = 'RNG',
     [12] = 'SAM',
     [13] = 'NIN',
-    [14] = 'DRK',
+    [14] = 'DRG',
     [15] = 'SMN',
     [16] = 'BLU',
     [17] = 'COR',
@@ -49,14 +49,44 @@ end
 local default_settings = {
     visible = { true },
     opacity = { 1.0 },
-    windows = { -- List of windows
-        { id = 1, visible = true, opacity = 1.0, window_pos = { x = 350, y = 700 }, buttons = {}, requires_target = false, job = nil }
+    windows = {
+        { 
+            id = 1, 
+            visible = true, 
+            opacity = 1.0, 
+            window_pos = { x = 63, y = 361 }, 
+            buttons = {
+                { command = "/clicky edit on", name = "EditON", pos = { x = 0, y = 1 } },
+                { command = "/clicky edit off", name = "EditOff", pos = { x = 0, y = 2 } },
+                { command = "/clicky addnew", name = "NewGUI", pos = { x = 0, y = 3 } }
+            },
+            requires_target = false
+        },
+        { 
+            id = 2, 
+            visible = true, 
+            opacity = 1.0, 
+            window_pos = { x = 61, y = 640 }, 
+            buttons = {
+                { command = "!mog", name = "Mog", pos = { x = 0, y = 1 } },
+                { command = "!chef", name = "Chef", pos = { x = 0, y = 2 } },
+                { command = "!points", name = "Points", pos = { x = 0, y = 3 } }
+            },
+            requires_target = false
+        },
+        { 
+            id = 3, 
+            visible = true, 
+            opacity = 1.0, 
+            window_pos = { x = 1045, y = 450 }, 
+            buttons = {
+                { command = "/attack", name = "Attack", pos = { x = 0, y = 1 } },
+                { command = "/check", name = "Check", pos = { x = 0, y = 3 } },
+                { command = "/ra <t>", name = "RANGE", pos = { x = 0, y = 2 } }
+            },
+            requires_target = true
+        }
     }
-}
-
--- Clicky Variables
-local clicky = {
-    settings = settings.load(default_settings)
 }
 
 local last_job_id = nil -- Track the last job ID
@@ -100,8 +130,7 @@ local function save_job_settings(settings_table, job)
     end
 end
 
-
-
+-- Load Job settings
 local function load_job_settings(job)
     local job_name = jobIconMapping[job]
     if not job_name then
@@ -110,19 +139,53 @@ local function load_job_settings(job)
     end
 
     local settings_alias = string.format('%s_settings', job_name)
-    local loaded_settings = settings.load(default_settings, settings_alias)
+    local success, loaded_settings = pcall(function()
+        return settings.load(default_settings, settings_alias)
+    end)
 
-    -- Check if settings.load returned nil, indicating file does not exist
-    if not loaded_settings or not next(loaded_settings) then
-        print(string.format('Job settings file not found for job: %s. Creating new one.', job_name))
-        settings.save(default_settings, settings_alias)
+    if not success or not loaded_settings or not next(loaded_settings) then
+        print(string.format('Job settings file not found or failed to load for job: %s. Creating new one.', job_name))
+        local save_success, save_err = pcall(function()
+            settings.save(default_settings, settings_alias)
+        end)
+        if not save_success then
+            print(string.format('Failed to save new settings for job: %s, error: %s', job_name, save_err))
+            coroutine.wrap(function()
+                coroutine.sleep(5)
+                AshitaCore:GetChatManager():QueueCommand(1, string.format('/addon reload %s', addon.name))
+            end)()
+        end
         loaded_settings = default_settings
     end
 
     return T(loaded_settings)
 end
 
+-- Initial settings load
+local function initial_load_settings()
+    local settings_alias = "settings"
+    local success, loaded_settings = pcall(function()
+        return settings.load(default_settings, settings_alias)
+    end)
 
+    if not success or not loaded_settings or not next(loaded_settings) then
+        print('Settings file not found or failed to load. Creating new one.')
+        local save_success, save_err = pcall(function()
+            settings.save(default_settings, settings_alias)
+        end)
+        if not save_success then
+            print(string.format('Failed to save new settings, error: %s', save_err))
+        end
+        loaded_settings = default_settings
+    end
+
+    return T(loaded_settings)
+end
+
+-- Clicky Variables
+local clicky = {
+    settings = initial_load_settings()
+}
 
 local function UpdateVisibility(window_id, visible)
     for _, window in ipairs(clicky.settings.windows) do
@@ -157,84 +220,6 @@ local function has_target()
     end
 
     return true
-end
-
-local function render_thf_button_window()
-    imgui.SetNextWindowPos({ 350, 700 }, ImGuiCond_Once)
-    local windowFlags = bit.bor(
-        ImGuiWindowFlags_NoTitleBar,
-        ImGuiWindowFlags_NoResize,
-        ImGuiWindowFlags_NoScrollbar,
-        ImGuiWindowFlags_AlwaysAutoResize,
-        ImGuiWindowFlags_NoCollapse,
-        ImGuiWindowFlags_NoNav,
-        ImGuiWindowFlags_NoBringToFrontOnFocus
-    )
-
-    if imgui.Begin('THF Button', true, windowFlags) then
-        drawJobIcon(6) -- Draw the THF job icon
-        if imgui.IsItemClicked() then
-            show_thf_actions = not show_thf_actions
-        end
-        imgui.End()
-    end
-end
-
-local function render_thf_actions_window()
-    if not show_thf_actions then return end
-
-    imgui.SetNextWindowPos({ clicky.settings.thf_window_pos.x, clicky.settings.thf_window_pos.y }, ImGuiCond_Once)
-    local windowFlags = bit.bor(
-        ImGuiWindowFlags_NoTitleBar,
-        ImGuiWindowFlags_NoResize,
-        ImGuiWindowFlags_NoScrollbar,
-        ImGuiWindowFlags_AlwaysAutoResize,
-        ImGuiWindowFlags_NoCollapse,
-        ImGuiWindowFlags_NoNav,
-        ImGuiWindowFlags_NoBringToFrontOnFocus
-    )
-    if imgui.Begin('THF Actions', true, windowFlags) then
-        if imgui.Button('SA', { 75, 50 }) then
-            AshitaCore:GetChatManager():QueueCommand(1, '/ja "Sneak Attack" <me>')
-        end
-        imgui.SameLine()
-        if imgui.Button('TA', { 75, 50 }) then
-            AshitaCore:GetChatManager():QueueCommand(1, '/ja "Trick Attack" <me>')
-        end
-        imgui.SameLine()
-        if imgui.Button('1HOUR', { 75, 50 }) then
-            AshitaCore:GetChatManager():QueueCommand(1, '/ws "Perfect Dodge" <me>')
-        end
-        if imgui.Button('Steal', { 75, 50 }) then
-            AshitaCore:GetChatManager():QueueCommand(1, '/ja "Steal" <t>')
-        end
-        imgui.SameLine()
-        if imgui.Button('Mug', { 75, 50 }) then
-            AshitaCore:GetChatManager():QueueCommand(1, '/ja "Mug" <t>')
-        end
-        imgui.SameLine()
-        if imgui.Button('Accomp.', { 75, 50 }) then
-            AshitaCore:GetChatManager():QueueCommand(1, '/ja "Accomplice" <st>')
-        end
-        imgui.SameLine()
-        if imgui.Button('Collab.', { 75, 50 }) then
-            AshitaCore:GetChatManager():QueueCommand(1, '/ja "Collaborator" <st>')
-        end
-
-        if imgui.Button('Hide', { 75, 50 }) then
-            AshitaCore:GetChatManager():QueueCommand(1, '/ja "Hide" <me>')
-        end
-        imgui.SameLine()
-        if imgui.Button('Flee', { 75, 50 }) then
-            AshitaCore:GetChatManager():QueueCommand(1, '/ja "Flee" <me>')
-        end
-
-        local x, y = imgui.GetWindowPos()
-        clicky.settings.thf_window_pos.x = x
-        clicky.settings.thf_window_pos.y = y
-        save_job_settings(clicky.settings, last_job_id)
-        imgui.End()
-    end
 end
 
 local function button_exists_at_position(buttons, pos)
@@ -458,8 +443,6 @@ local function render_buttons_window(window)
     end
 end
 
-
-
 local function add_new_window()
     local new_id = #clicky.settings.windows + 1
     table.insert(clicky.settings.windows, { id = new_id, visible = true, opacity = 1.0, window_pos = { x = 350 + (new_id - 1) * 20, y = 700 + (new_id - 1) * 20 }, buttons = {}, requires_target = false, job = nil })
@@ -504,8 +487,6 @@ ashita.events.register('d3d_present', 'present_cb', function()
             render_buttons_window(window)
         end
         render_edit_window()
-        render_thf_button_window()
-        render_thf_actions_window()
         imgui.Render()
     end
 end)
