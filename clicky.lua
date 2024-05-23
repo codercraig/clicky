@@ -72,7 +72,30 @@ local edit_mode = false -- Track if edit mode is active
 local debug_printed = false
 local debug_save = false
 
--- Function to save settings for a specific job
+local function save_job_settings(settings_table, job)
+    local job_name = jobIconMapping[job]
+    if not job_name then
+        print(string.format('Invalid job ID: %d', job))
+        return
+    end
+
+    -- Ensure the settings_table is not nil or empty
+    if not settings_table or not next(settings_table) then
+        print('Error: settings_table is nil or empty')
+        return
+    end
+
+    local settings_alias = string.format('%s_settings', job_name)
+    local success, err = pcall(function()
+        settings.save(settings_alias)
+    end)
+    -- if success then
+    --     print(string.format('Saved settings for job: %s (%d)', job_name, job))  -- Debug print statement
+    -- else
+    --     print(string.format('Failed to save settings for job: %s (%d), error: %s', job_name, job, err))
+    -- end
+end
+
 local function load_job_settings(job)
     local job_name = jobIconMapping[job]
     if not job_name then
@@ -92,23 +115,6 @@ local function load_job_settings(job)
     return T(loaded_settings)
 end
 
-
-local function save_job_settings(settings_table, job)
-    local job_name = jobIconMapping[job]
-    if not job_name then
-        print(string.format('Invalid job ID: %d', job))
-        return
-    end
-
-    local settings_alias = string.format('%s_settings', job_name)
-    if not debug_printed then
-        print("Saving settings for job ID:", job)
-        debug_printed = true
-    end
-    settings.save(settings_table, settings_alias)
-end
-
-
 local function UpdateVisibility(window_id, visible)
     for _, window in ipairs(clicky.settings.windows) do
         if window.id == window_id then
@@ -121,7 +127,6 @@ local function UpdateVisibility(window_id, visible)
     end
 end
 
--- Function to execute a sequence of commands with delays
 local function execute_commands(commands, delay)
     coroutine.wrap(function()
         for _, command in ipairs(commands) do
@@ -131,7 +136,6 @@ local function execute_commands(commands, delay)
     end)()
 end
 
--- Function to check if the player has a target
 local function has_target()
     local targetManager = AshitaCore:GetMemoryManager():GetTarget()
     if targetManager == nil then
@@ -146,7 +150,6 @@ local function has_target()
     return true
 end
 
--- Function to render the THF button window
 local function render_thf_button_window()
     imgui.SetNextWindowPos({ 350, 700 }, ImGuiCond_Once)
     local windowFlags = bit.bor(
@@ -168,7 +171,6 @@ local function render_thf_button_window()
     end
 end
 
--- Function to render the THF actions window
 local function render_thf_actions_window()
     if not show_thf_actions then return end
 
@@ -218,17 +220,14 @@ local function render_thf_actions_window()
             AshitaCore:GetChatManager():QueueCommand(1, '/ja "Flee" <me>')
         end
 
-        -- Allow the window to be moved
         local x, y = imgui.GetWindowPos()
         clicky.settings.thf_window_pos.x = x
         clicky.settings.thf_window_pos.y = y
-        --print("Saving settings for job ID:", last_job_id)
-        --save_job_settings(clicky.settings, last_job_id)
+        save_job_settings(clicky.settings, last_job_id)
         imgui.End()
     end
 end
 
--- Function to check if a button exists at a given position
 local function button_exists_at_position(buttons, pos)
     for _, button in ipairs(buttons) do
         if button.pos.x == pos.x and button.pos.y == pos.y then
@@ -238,13 +237,11 @@ local function button_exists_at_position(buttons, pos)
     return false
 end
 
--- Function to get the player's main job
 local function get_player_main_job()
     local player = AshitaCore:GetMemoryManager():GetPlayer()
     return player:GetMainJob()
 end
 
--- Initialize buffers for editing
 local seacom = {
     name_buffer = { '' },
     name_buffer_size = 128,
@@ -252,12 +249,10 @@ local seacom = {
     command_buffer_size = 256,
 }
 
--- Initialize buffers for settings
 local settings_buffers = {
     requires_target = { false }
 }
 
--- Function to render the edit window
 local function render_edit_window()
     if isEditWindowOpen and editing_button_index ~= nil then
         local window = clicky.settings.windows[editing_window_id]
@@ -353,24 +348,20 @@ local function render_edit_window()
     end
 end
 
--- Function to render the custom buttons window
 local function render_buttons_window(window)
     if not window.visible then
         return
     end
 
-    -- Check if the window requires a target and if the player has a target
     if not edit_mode and window.requires_target and not has_target() then
         return
     end
 
-    -- Check if the window is specific to a job and if the player's job matches
     local player_job = get_player_main_job()
     if window.job and window.job ~= player_job then
         return
     end
 
-    -- Make the main window movable only in edit mode
     imgui.SetNextWindowPos({ window.window_pos.x, window.window_pos.y }, ImGuiCond_Once)
     local windowFlags = bit.bor(
         ImGuiWindowFlags_NoTitleBar,
@@ -387,11 +378,9 @@ local function render_buttons_window(window)
         windowFlags = bit.bor(windowFlags, ImGuiWindowFlags_NoBackground, ImGuiWindowFlags_NoDecoration)
     end
 
-    -- Set the background opacity to 50% in edit mode
     imgui.SetNextWindowBgAlpha(edit_mode and 0.5 or window.opacity)
     if imgui.Begin('Clicky Buttons ' .. window.id, true, windowFlags) then
         if edit_mode then
-            -- Display the plus and close buttons at the top
             imgui.SetCursorPosY(0)
             if imgui.Button('+', { 25, 25 }) then
                 local max_y = 0
@@ -413,7 +402,6 @@ local function render_buttons_window(window)
                 save_job_settings(clicky.settings, last_job_id)
             end
 
-            -- Add a checkbox to set the requires_target flag
             imgui.SameLine()
             settings_buffers.requires_target[1] = window.requires_target or false
             if imgui.Checkbox('Requires Target', settings_buffers.requires_target) then
@@ -422,7 +410,6 @@ local function render_buttons_window(window)
             end
         end
 
-        -- Display the custom buttons
         for i, button in ipairs(window.buttons) do
             if button.pos == nil then
                 button.pos = { x = 0, y = i }
@@ -434,7 +421,6 @@ local function render_buttons_window(window)
                 AshitaCore:GetChatManager():QueueCommand(1, button.command)
             end
 
-            -- Check for right-click to start editing
             if imgui.IsItemHovered() and edit_mode then
                 if imgui.IsMouseClicked(1) then -- 1 is for right-click
                     editing_button_index = i -- Start editing
@@ -446,7 +432,6 @@ local function render_buttons_window(window)
             end
         end
 
-        -- Allow the window to be moved
         local x, y = imgui.GetWindowPos()
         window.window_pos.x = x
         window.window_pos.y = y
@@ -456,7 +441,6 @@ local function render_buttons_window(window)
     end
 end
 
--- Function to add a new window
 local function add_new_window()
     local new_id = #clicky.settings.windows + 1
     table.insert(clicky.settings.windows, { id = new_id, visible = true, opacity = 1.0, window_pos = { x = 350 + (new_id - 1) * 20, y = 700 + (new_id - 1) * 20 }, buttons = {}, requires_target = false, job = nil })
@@ -476,7 +460,6 @@ ashita.events.register('job_change', 'job_change_cb', function()
     end
 end)
 
--- Function to handle job changes
 local function job_change_cb()
     local player = AshitaCore:GetMemoryManager():GetPlayer()
     if not player then
@@ -494,7 +477,6 @@ local function job_change_cb()
     end
 end
 
--- Integrate with Ashita's ImGui rendering
 ashita.events.register('d3d_present', 'present_cb', function()
     job_change_cb()
     if isRendering then
@@ -508,70 +490,60 @@ ashita.events.register('d3d_present', 'present_cb', function()
     end
 end)
 
--- Handle commands to show/hide the buttons and toggle edit mode
 ashita.events.register('command', 'command_cb', function (e)
     local args = e.command:args()
     if #args == 0 or not args[1]:any('/clicky') then
         return
     end
 
-    -- Block all related commands
     e.blocked = true
 
-    -- Handle: /clicky show
     if #args >= 2 and args[2]:any('show') then
         UpdateVisibility(tonumber(args[3]) or 1, true)
         isRendering = true
         return
     end
 
-    -- Handle: /clicky hide
     if #args >= 2 and args[2]:any('hide') then
         UpdateVisibility(tonumber(args[3]) or 1, false)
         isRendering = false
         return
     end
 
-    -- Handle: /clicky addnew
     if #args >= 2 and args[2]:any('addnew') then
         add_new_window()
         return
     end
 
-    -- Handle: /clicky edit on
     if #args >= 2 and args[2]:any('edit') and args[3]:any('on') then
         edit_mode = true
         for _, window in ipairs(clicky.settings.windows) do
             window.opacity = 1.0
         end
-        settings.save(clicky.settings)
+        save_job_settings(clicky.settings, last_job_id)
         return
     end
 
-    -- Handle: /clicky edit off
     if #args >= 2 and args[2]:any('edit') and args[3]:any('off') then
         edit_mode = false
         for _, window in ipairs(clicky.settings.windows) do
             window.opacity = 0.0
         end
-        settings.save(clicky.settings)
+        save_job_settings(clicky.settings, last_job_id)
         return
     end
 
-    -- Unhandled: Print help information
     print(chat.header(addon.name):append(chat.error('Usage: /clicky [show|hide|addnew|edit] [on|off] [window_id]')))
-end
-)
+end)
 
--- Save settings on unload
 ashita.events.register('unload', 'unload_cb', function ()
     if last_job_id then
         save_job_settings(clicky.settings, last_job_id)
     end
 end)
 
--- Ensure visibility when initializing
 for _, window in ipairs(clicky.settings.windows) do
     UpdateVisibility(window.id, window.visible)
 end
 isRendering = true
+
