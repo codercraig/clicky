@@ -73,6 +73,10 @@ local debug_printed = false
 local debug_save = false
 
 local function save_job_settings(settings_table, job)
+    if not edit_mode then
+        return
+    end
+    
     local job_name = jobIconMapping[job]
     if not job_name then
         print(string.format('Invalid job ID: %d', job))
@@ -89,12 +93,14 @@ local function save_job_settings(settings_table, job)
     local success, err = pcall(function()
         settings.save(settings_alias)
     end)
-    -- if success then
-    --     print(string.format('Saved settings for job: %s (%d)', job_name, job))  -- Debug print statement
-    -- else
-    --     print(string.format('Failed to save settings for job: %s (%d), error: %s', job_name, job, err))
-    -- end
+    if not success then
+        print(string.format('Failed to save settings for job: %s (%d), error: %s', job_name, job, err))
+    else
+        print(string.format('Saved settings for job: %s (%d)', job_name, job))  -- Debug print statement
+    end
 end
+
+
 
 local function load_job_settings(job)
     local job_name = jobIconMapping[job]
@@ -106,7 +112,8 @@ local function load_job_settings(job)
     local settings_alias = string.format('%s_settings', job_name)
     local loaded_settings = settings.load(default_settings, settings_alias)
 
-    if not loaded_settings then
+    -- Check if settings.load returned nil, indicating file does not exist
+    if not loaded_settings or not next(loaded_settings) then
         print(string.format('Job settings file not found for job: %s. Creating new one.', job_name))
         settings.save(default_settings, settings_alias)
         loaded_settings = default_settings
@@ -114,6 +121,8 @@ local function load_job_settings(job)
 
     return T(loaded_settings)
 end
+
+
 
 local function UpdateVisibility(window_id, visible)
     for _, window in ipairs(clicky.settings.windows) do
@@ -348,6 +357,8 @@ local function render_edit_window()
     end
 end
 
+local prev_window_pos = { x = nil, y = nil }
+
 local function render_buttons_window(window)
     if not window.visible then
         return
@@ -371,7 +382,7 @@ local function render_buttons_window(window)
         ImGuiWindowFlags_NoCollapse,
         ImGuiWindowFlags_NoNav,
         ImGuiWindowFlags_NoBringToFrontOnFocus,
-        (edit_mode and 0 or ImGuiWindowFlags_NoMove) -- Disable moving the window if not in edit mode
+        (edit_mode and 0 or ImGuiWindowFlags_NoMove)
     )
     
     if not edit_mode then
@@ -416,30 +427,38 @@ local function render_buttons_window(window)
             end
 
             imgui.SetCursorPosX(button.pos.x * 80)
-            imgui.SetCursorPosY((button.pos.y + 1) * 55)  -- Offset by 1 row to make space for "+" and "x"
+            imgui.SetCursorPosY((button.pos.y + 1) * 55)
             if imgui.Button(button.name, { 70, 50 }) then
                 AshitaCore:GetChatManager():QueueCommand(1, button.command)
             end
 
             if imgui.IsItemHovered() and edit_mode then
-                if imgui.IsMouseClicked(1) then -- 1 is for right-click
-                    editing_button_index = i -- Start editing
+                if imgui.IsMouseClicked(1) then
+                    editing_button_index = i
                     seacom.name_buffer[1] = button.name
                     seacom.command_buffer[1] = button.command
-                    isEditWindowOpen = true -- Open the edit window
-                    editing_window_id = window.id -- Track which window is being edited
+                    isEditWindowOpen = true
+                    editing_window_id = window.id
                 end
             end
         end
 
-        local x, y = imgui.GetWindowPos()
-        window.window_pos.x = x
-        window.window_pos.y = y
-        save_job_settings(clicky.settings, last_job_id)
-        
+        if edit_mode then
+            local x, y = imgui.GetWindowPos()
+            if prev_window_pos.x ~= x or prev_window_pos.y ~= y then
+                window.window_pos.x = x
+                window.window_pos.y = y
+                save_job_settings(clicky.settings, last_job_id)
+                prev_window_pos.x = x
+                prev_window_pos.y = y
+            end
+        end
+
         imgui.End()
     end
 end
+
+
 
 local function add_new_window()
     local new_id = #clicky.settings.windows + 1
@@ -469,13 +488,14 @@ local function job_change_cb()
 
     local job_id = player:GetMainJob()
     if job_id ~= last_job_id then
-        if last_job_id then
+        if last_job_id and edit_mode then
             save_job_settings(clicky.settings, last_job_id)
         end
         clicky.settings = load_job_settings(job_id)
         last_job_id = job_id
     end
 end
+
 
 ashita.events.register('d3d_present', 'present_cb', function()
     job_change_cb()
