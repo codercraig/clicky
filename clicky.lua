@@ -52,39 +52,39 @@ local default_settings = {
     visible = { true },
     opacity = { 1.0 },
     windows = {
-        { 
-            id = 1, 
-            visible = true, 
-            opacity = 1.0, 
-            window_pos = { x = 63, y = 361 }, 
+        {
+            id = 1,
+            visible = true,
+            opacity = 1.0,
+            window_pos = { x = 63, y = 361 },
             buttons = {
-                { commands = { "/clicky edit on" }, name = "EditON", pos = { x = 0, y = 1 } },
-                { commands = { "/clicky edit off" }, name = "EditOff", pos = { x = 0, y = 2 } },
-                { commands = { "/clicky addnew" }, name = "NewGUI", pos = { x = 0, y = 3 } }
+                { commands = { { command = "/clicky edit on", delay = 0 } }, name = "EditON", pos = { x = 0, y = 1 } },
+                { commands = { { command = "/clicky edit off", delay = 0 } }, name = "EditOff", pos = { x = 0, y = 2 } },
+                { commands = { { command = "/clicky addnew", delay = 0 } }, name = "NewGUI", pos = { x = 0, y = 3 } }
             },
             requires_target = false
         },
-        { 
-            id = 2, 
-            visible = true, 
-            opacity = 1.0, 
-            window_pos = { x = 61, y = 640 }, 
+        {
+            id = 2,
+            visible = true,
+            opacity = 1.0,
+            window_pos = { x = 61, y = 640 },
             buttons = {
-                { commands = { "!mog" }, name = "Mog", pos = { x = 0, y = 1 } },
-                { commands = { "!chef" }, name = "Chef", pos = { x = 0, y = 2 } },
-                { commands = { "!points" }, name = "Points", pos = { x = 0, y = 3 } }
+                { commands = { { command = "!mog", delay = 0 } }, name = "Mog", pos = { x = 0, y = 1 } },
+                { commands = { { command = "!chef", delay = 0 } }, name = "Chef", pos = { x = 0, y = 2 } },
+                { commands = { { command = "!points", delay = 0 } }, name = "Points", pos = { x = 0, y = 3 } }
             },
             requires_target = false
         },
-        { 
-            id = 3, 
-            visible = true, 
-            opacity = 1.0, 
-            window_pos = { x = 1045, y = 450 }, 
+        {
+            id = 3,
+            visible = true,
+            opacity = 1.0,
+            window_pos = { x = 1045, y = 450 },
             buttons = {
-                { commands = { "/attack" }, name = "Attack", pos = { x = 0, y = 1 } },
-                { commands = { "/check" }, name = "Check", pos = { x = 0, y = 3 } },
-                { commands = { "/ra <t>" }, name = "RANGE", pos = { x = 0, y = 2 } }
+                { commands = { { command = "/attack", delay = 0 } }, name = "Attack", pos = { x = 0, y = 1 } },
+                { commands = { { command = "/check", delay = 0 } }, name = "Check", pos = { x = 0, y = 3 } },
+                { commands = { { command = "/ra <t>", delay = 0 } }, name = "RANGE", pos = { x = 0, y = 2 } }
             },
             requires_target = true
         }
@@ -107,7 +107,7 @@ local function save_job_settings(settings_table, job)
     if not edit_mode then
         return
     end
-    
+
     local job_name = jobIconMapping[job]
     if not job_name then
         print(string.format('Invalid job ID: %d', job))
@@ -122,7 +122,7 @@ local function save_job_settings(settings_table, job)
 
     local settings_alias = string.format('%s_settings', job_name)
     local success, err = pcall(function()
-        settings.save(settings_alias)
+        settings.save(settings_alias, settings_table)
     end)
     if not success then
         print(string.format('Failed to save settings for job: %s (%d), error: %s', job_name, job, err))
@@ -131,7 +131,24 @@ local function save_job_settings(settings_table, job)
     end
 end
 
--- Load Job settings
+local function migrate_old_settings(old_settings)
+    local new_settings = old_settings
+
+    for _, window in ipairs(new_settings.windows) do
+        for _, button in ipairs(window.buttons) do
+            if type(button.commands[1]) == "string" then
+                local old_commands = button.commands
+                button.commands = {}
+                for _, cmd in ipairs(old_commands) do
+                    table.insert(button.commands, { command = cmd, delay = 0 })
+                end
+            end
+        end
+    end
+
+    return new_settings
+end
+
 local function load_job_settings(job)
     local job_name = jobIconMapping[job]
     if not job_name then
@@ -147,7 +164,7 @@ local function load_job_settings(job)
     if not success or not loaded_settings or not next(loaded_settings) then
         print(string.format('Job settings file not found or failed to load for job: %s. Creating new one.', job_name))
         local save_success, save_err = pcall(function()
-            settings.save(default_settings, settings_alias)
+            settings.save(settings_alias, default_settings)
         end)
         if not save_success then
             print(string.format('Failed to save new settings for job: %s, error: %s', job_name, save_err))
@@ -172,7 +189,7 @@ local function initial_load_settings()
     if not success or not loaded_settings or not next(loaded_settings) then
         print('Settings file not found or failed to load. Creating new one.')
         local save_success, save_err = pcall(function()
-            settings.save(default_settings, settings_alias)
+            settings.save(settings_alias, default_settings)
         end)
         if not save_success then
             print(string.format('Failed to save new settings, error: %s', save_err))
@@ -180,7 +197,7 @@ local function initial_load_settings()
         loaded_settings = default_settings
     end
 
-    return T(loaded_settings)
+    return T(migrate_old_settings(loaded_settings))
 end
 
 -- Clicky Variables
@@ -200,17 +217,23 @@ local function UpdateVisibility(window_id, visible)
     end
 end
 
-local function execute_commands(commands, delay)
+local function execute_commands(commands)
     local index = 1
 
     local function execute_next_command()
         if index <= #commands then
-            print(string.format("Executing command %d: %s", index, commands[index]))  -- Debug message
-            AshitaCore:GetChatManager():QueueCommand(1, commands[index])
+            local command = commands[index]
+            print(string.format("Executing command %d: %s", index, command.command))  -- Debug message
+            AshitaCore:GetChatManager():QueueCommand(1, command.command)
             index = index + 1
             if index <= #commands then
-                print(string.format("Waiting for %d seconds before next command...", delay))
-                timer.Simple(delay, execute_next_command)
+                local delay = command.delay or 0
+                if delay > 0 then
+                    print(string.format("Waiting for %d seconds before next command...", delay))
+                    timer.Simple(delay, execute_next_command)
+                else
+                    execute_next_command()
+                end
             end
         else
             print("All commands executed.")  -- Debug message
@@ -221,9 +244,6 @@ local function execute_commands(commands, delay)
     execute_next_command()
     print("Command execution function started.")  -- Debug message
 end
-
-
-
 
 local function has_target()
     local targetManager = AshitaCore:GetMemoryManager():GetTarget()
@@ -281,14 +301,20 @@ local function render_edit_window()
             imgui.Separator()
 
             imgui.Text('Button Commands:')
-            for cmdIndex, cmd in ipairs(button.commands) do
-                local cmdBuffer = { cmd }
+            for cmdIndex, cmdInfo in ipairs(button.commands) do
+                local cmdBuffer = { cmdInfo.command }
+                local delayBuffer = { tostring(cmdInfo.delay) }
                 if imgui.InputText('##EditButtonCommand' .. cmdIndex, cmdBuffer, seacom.command_buffer_size) then
-                    button.commands[cmdIndex] = cmdBuffer[1]
+                    button.commands[cmdIndex].command = cmdBuffer[1]
+                end
+                imgui.SameLine()
+                if imgui.InputText('##EditButtonDelay' .. cmdIndex, delayBuffer, 5) then
+                    local delay = tonumber(delayBuffer[1]) or 0
+                    button.commands[cmdIndex].delay = delay
                 end
             end
             if imgui.Button('+Add', { 75, 50 }) then
-                table.insert(button.commands, "")
+                table.insert(button.commands, { command = "", delay = 0 })
             end
 
             imgui.SameLine()
@@ -298,9 +324,8 @@ local function render_edit_window()
                 end
             end
 
-            
-
             imgui.Separator()
+
             -- Movement Buttons
             if imgui.Button('<', { 50, 50 }) then
                 if button.pos.x > 0 then
@@ -346,7 +371,7 @@ local function render_edit_window()
                 if button.pos.x > 0 then
                     local newButtonPos = { x = button.pos.x - 1, y = button.pos.y }
                     if not button_exists_at_position(window.buttons, newButtonPos) then
-                        table.insert(window.buttons, { name = 'New', commands = { '' }, pos = newButtonPos })
+                        table.insert(window.buttons, { name = 'New', commands = { { command = "", delay = 0 } }, pos = newButtonPos })
                         save_job_settings(clicky.settings, last_job_id)
                     end
                 end
@@ -356,7 +381,7 @@ local function render_edit_window()
             if imgui.Button('+>', { 50, 50 }) then
                 local newButtonPos = { x = button.pos.x + 1, y = button.pos.y }
                 if not button_exists_at_position(window.buttons, newButtonPos) then
-                    table.insert(window.buttons, { name = 'New', commands = { '' }, pos = newButtonPos })
+                    table.insert(window.buttons, { name = 'New', commands = { { command = "", delay = 0 } }, pos = newButtonPos })
                     save_job_settings(clicky.settings, last_job_id)
                 end
             end
@@ -366,7 +391,7 @@ local function render_edit_window()
                 if button.pos.y > 0 then
                     local newButtonPos = { x = button.pos.x, y = button.pos.y - 1 }
                     if not button_exists_at_position(window.buttons, newButtonPos) then
-                        table.insert(window.buttons, { name = 'New', commands = { '' }, pos = newButtonPos })
+                        table.insert(window.buttons, { name = 'New', commands = { { command = "", delay = 0 } }, pos = newButtonPos })
                         save_job_settings(clicky.settings, last_job_id)
                     end
                 end
@@ -376,7 +401,7 @@ local function render_edit_window()
             if imgui.Button('+v', { 50, 50 }) then
                 local newButtonPos = { x = button.pos.x, y = button.pos.y + 1 }
                 if not button_exists_at_position(window.buttons, newButtonPos) then
-                    table.insert(window.buttons, { name = 'New', commands = { '' }, pos = newButtonPos })
+                    table.insert(window.buttons, { name = 'New', commands = { { command = "", delay = 0 } }, pos = newButtonPos })
                     save_job_settings(clicky.settings, last_job_id)
                 end
             end
@@ -412,7 +437,6 @@ local function render_edit_window()
     end
 end
 
-
 local function add_new_window()
     local new_id = #clicky.settings.windows + 1
     table.insert(clicky.settings.windows, { id = new_id, visible = true, opacity = 1.0, window_pos = { x = 350 + (new_id - 1) * 20, y = 700 + (new_id - 1) * 20 }, buttons = {}, requires_target = false, job = nil })
@@ -435,7 +459,10 @@ local function render_buttons_window(window)
         return
     end
 
-    imgui.SetNextWindowPos({ window.window_pos.x, window.window_pos.y }, ImGuiCond_Once)
+    -- Use ImGuiCond_Always only when not in edit mode to allow movement
+    local set_pos_cond = edit_mode and ImGuiCond_Once or ImGuiCond_Always
+    imgui.SetNextWindowPos({ window.window_pos.x, window.window_pos.y }, set_pos_cond)
+
     local windowFlags = bit.bor(
         ImGuiWindowFlags_NoTitleBar,
         ImGuiWindowFlags_NoResize,
@@ -446,7 +473,7 @@ local function render_buttons_window(window)
         ImGuiWindowFlags_NoBringToFrontOnFocus,
         (edit_mode and 0 or ImGuiWindowFlags_NoMove)
     )
-    
+
     if not edit_mode then
         windowFlags = bit.bor(windowFlags, ImGuiWindowFlags_NoBackground, ImGuiWindowFlags_NoDecoration)
     end
@@ -464,7 +491,7 @@ local function render_buttons_window(window)
                 end
                 local newButtonPos = { x = 0, y = max_y + 1 }
                 if not button_exists_at_position(window.buttons, newButtonPos) then
-                    table.insert(window.buttons, { name = 'New', commands = { '' }, pos = newButtonPos })
+                    table.insert(window.buttons, { name = 'New', commands = { { command = "", delay = 0 } }, pos = newButtonPos })
                     save_job_settings(clicky.settings, last_job_id)
                 end
             end
@@ -496,7 +523,7 @@ local function render_buttons_window(window)
             imgui.SetCursorPosY((button.pos.y + 1) * 55)
             if imgui.Button(button.name, { 70, 50 }) then
                 print(string.format("Button %s clicked. Executing commands...", button.name))  -- Debug message
-                execute_commands(button.commands, 3)  -- Adjust the delay as needed
+                execute_commands(button.commands)  -- Adjust the delay as needed
             end
 
             if imgui.IsItemHovered() and edit_mode then
@@ -526,25 +553,39 @@ local function render_buttons_window(window)
 end
 
 
+-- local function job_change_cb()
+--     local player = AshitaCore:GetMemoryManager():GetPlayer()
+--     if not player then
+--         print('Error: Unable to get player memory manager')
+--         return
+--     end
 
-local function add_new_window()
-    local new_id = #clicky.settings.windows + 1
-    table.insert(clicky.settings.windows, { id = new_id, visible = true, opacity = 1.0, window_pos = { x = 350 + (new_id - 1) * 20, y = 700 + (new_id - 1) * 20 }, buttons = {}, requires_target = false, job = nil })
-    save_job_settings(clicky.settings, last_job_id)
-end
+--     local job_id = player:GetMainJob()
+--     if job_id ~= last_job_id then
+--         if last_job_id then
+--             save_job_settings(clicky.settings, last_job_id)
+--         end
 
-ashita.events.register('job_change', 'job_change_cb', function()
-    local player = AshitaCore:GetMemoryManager():GetPlayer()
-    if not player then return end
+--         local new_settings = load_job_settings(job_id)
+        
+--         -- Assign window positions from loaded settings to the current settings
+--         for i, window in ipairs(clicky.settings.windows) do
+--             if new_settings.windows[i] then
+--                 window.window_pos.x = new_settings.windows[i].window_pos.x
+--                 window.window_pos.y = new_settings.windows[i].window_pos.y
+--             end
+--         end
 
-    local main_job = player:GetMainJob()
-    local main_job_name = AshitaCore:GetResourceManager():GetString("jobs.names_abbr", main_job)
+--         clicky.settings = new_settings
+--         last_job_id = job_id
+--     end
+-- end
 
-    if main_job_name then
-        clicky.settings = load_job_settings(main_job)
-        save_job_settings(clicky.settings, main_job)
+local function update_window_positions()
+    for _, window in ipairs(clicky.settings.windows) do
+        imgui.SetNextWindowPos({ window.window_pos.x, window.window_pos.y }, ImGuiCond_Always)
     end
-end)
+end
 
 local function job_change_cb()
     local player = AshitaCore:GetMemoryManager():GetPlayer()
@@ -555,13 +596,36 @@ local function job_change_cb()
 
     local job_id = player:GetMainJob()
     if job_id ~= last_job_id then
-        if last_job_id and edit_mode then
+        if last_job_id then
             save_job_settings(clicky.settings, last_job_id)
         end
+
         clicky.settings = load_job_settings(job_id)
         last_job_id = job_id
+        update_window_positions()
+        -- Update window positions
+        
     end
 end
+
+
+-- local function job_change_cb()
+--     local player = AshitaCore:GetMemoryManager():GetPlayer()
+--     if not player then
+--         print('Error: Unable to get player memory manager')
+--         return
+--     end
+
+--     local job_id = player:GetMainJob()
+--     if job_id ~= last_job_id then
+--             timer.Simple(5, function() -- 5-second buffer
+--                 if last_job_id and edit_mode then
+--                     save_job_settings(clicky.settings, last_job_id)
+--                 end
+--                 clicky.settings = load_job_settings(job_id)
+--             end)
+--     end
+-- end
 
 -- Initialize last time for delta time calculation
 local last_time = os.clock()
@@ -572,7 +636,7 @@ ashita.events.register('d3d_present', 'present_cb', function()
     local current_time = os.clock()
     local dt = current_time - last_time
     last_time = current_time
-    
+
     timer.Check(dt) -- Update the timer
     if isRendering then
         for _, window in ipairs(clicky.settings.windows) do
@@ -639,6 +703,3 @@ for _, window in ipairs(clicky.settings.windows) do
     UpdateVisibility(window.id, window.visible)
 end
 isRendering = true
-
-
-
