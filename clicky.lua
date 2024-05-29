@@ -8,11 +8,42 @@ local imgui = require('imgui');
 local settings = require('settings');
 local d3d = require('d3d8');
 local ffi = require('ffi');
---local coroutine = require('coroutine');
 local images = require("images");
-local timer = require("timer") -- Require the timer module
+local timer = require("timer")
 local guiimages = images.loadTextures();
 
+-- Define dark blue style
+local darkBluePfStyles = {
+    {ImGuiCol_Text, {1.0, 1.0, 1.0, 1.0}}, -- White text
+    {ImGuiCol_TextDisabled, {0.5, 0.5, 0.5, 1.0}}, -- Grey text
+    {ImGuiCol_WindowBg, {0.0, 0.0, 0.2, 1.0}}, -- Dark blue background
+    {ImGuiCol_ChildBg, {0.0, 0.0, 0.2, 1.0}}, -- Dark blue background
+    {ImGuiCol_PopupBg, {0.0, 0.0, 0.2, 1.0}}, -- Dark blue background
+    {ImGuiCol_Border, {0.3, 0.3, 0.3, 1.0}}, -- Grey border
+    {ImGuiCol_BorderShadow, {0.0, 0.0, 0.0, 0.0}}, -- No border shadow
+    {ImGuiCol_FrameBg, {0.1, 0.1, 0.3, 1.0}}, -- Dark blue frame background
+    {ImGuiCol_FrameBgHovered, {0.2, 0.2, 0.4, 1.0}}, -- Lighter blue when hovered
+    {ImGuiCol_FrameBgActive, {0.3, 0.3, 0.5, 1.0}}, -- Even lighter blue when active
+    {ImGuiCol_TitleBg, {0.0, 0.0, 0.2, 1.0}}, -- Dark blue title background
+    {ImGuiCol_TitleBgActive, {0.1, 0.1, 0.3, 1.0}}, -- Lighter blue when active
+    {ImGuiCol_TitleBgCollapsed, {0.0, 0.0, 0.2, 1.0}}, -- Dark blue when collapsed
+    {ImGuiCol_Button, {0.1, 0.1, 0.3, 1.0}}, -- Dark blue button
+    {ImGuiCol_ButtonHovered, {0.2, 0.2, 0.4, 1.0}}, -- Lighter blue button when hovered
+    {ImGuiCol_ButtonActive, {0.3, 0.3, 0.5, 1.0}}, -- Even lighter blue button when active
+    {ImGuiCol_Header, {0.0, 0.0, 0.2, 1.0}}, -- Dark blue header
+    {ImGuiCol_HeaderHovered, {0.2, 0.2, 0.4, 1.0}}, -- Lighter blue header when hovered
+    {ImGuiCol_HeaderActive, {0.3, 0.3, 0.5, 1.0}}, -- Even lighter blue header when active
+    -- Add other colors as needed
+}
+
+local function setup_imgui_style()
+    for _, style in ipairs(darkBluePfStyles) do
+        imgui.PushStyleColor(style[1], style[2])
+    end
+end
+
+setup_imgui_style()
+-- Your existing code continues here...
 local jobIconMapping = {
     [1] = 'WAR',
     [2] = 'MNK',
@@ -291,16 +322,46 @@ local function render_edit_window()
         if not button.commands then
             button.commands = {}
         end
-        if imgui.Begin('Edit Button', true, ImGuiWindowFlags_AlwaysAutoResize) then
+        -- ImGuiWindowFlags_AlwaysAutoResize
+        if imgui.Begin('Edit Button', true,ImGuiWindowFlags_AlwaysAutoResize) then
             
+
+            if imgui.Button('Save', { 50, 25 }) then
+                button.name = seacom.name_buffer[1]
+                save_job_settings(clicky.settings, last_job_id)
+                if not debug_save then
+                    debug_save = true
+                end
+                isEditWindowOpen = false
+                editing_button_index = nil
+                editing_window_id = nil
+            end
+
+            imgui.SameLine()
+            if imgui.Button('X', { 50, 25 }) then
+                isEditWindowOpen = false
+                editing_button_index = nil
+                editing_window_id = nil
+            end
+
+            imgui.Separator()
+
             imgui.Text('Button Name:')
+            if imgui.Button('DEL', { 50, 25 }) then
+                table.remove(window.buttons, editing_button_index)
+                save_job_settings(clicky.settings, last_job_id)
+                isEditWindowOpen = false
+                editing_button_index = nil
+                editing_window_id = nil
+            end
+            imgui.SameLine()
             if imgui.InputText('##EditButtonName', seacom.name_buffer, seacom.name_buffer_size) then
                 button.name = seacom.name_buffer[1]
             end
 
             imgui.Separator()
 
-            imgui.Text('Button Commands:')
+            imgui.Text('Button/Wait Commands:')
             for cmdIndex, cmdInfo in ipairs(button.commands) do
                 local cmdBuffer = { cmdInfo.command }
                 local delayBuffer = { tostring(cmdInfo.delay) }
@@ -308,17 +369,18 @@ local function render_edit_window()
                     button.commands[cmdIndex].command = cmdBuffer[1]
                 end
                 imgui.SameLine()
+                imgui.SetNextItemWidth(50) -- Adjust the width as needed
                 if imgui.InputText('##EditButtonDelay' .. cmdIndex, delayBuffer, 5) then
                     local delay = tonumber(delayBuffer[1]) or 0
                     button.commands[cmdIndex].delay = delay
                 end
             end
-            if imgui.Button('+Add', { 75, 50 }) then
+            if imgui.Button('+Add', { 110, 40 }) then
                 table.insert(button.commands, { command = "", delay = 0 })
             end
 
             imgui.SameLine()
-            if imgui.Button('-Remove', { 75, 50 }) then
+            if imgui.Button('-Remove', { 110, 40 }) then
                 if #button.commands > 1 then
                     table.remove(button.commands, #button.commands)
                 end
@@ -404,32 +466,6 @@ local function render_edit_window()
                     table.insert(window.buttons, { name = 'New', commands = { { command = "", delay = 0 } }, pos = newButtonPos })
                     save_job_settings(clicky.settings, last_job_id)
                 end
-            end
-
-            imgui.Separator()
-
-            if imgui.Button('Save', { 75, 50 }) then
-                button.name = seacom.name_buffer[1]
-                save_job_settings(clicky.settings, last_job_id)
-                if not debug_save then
-                    debug_save = true
-                end
-            end
-
-            imgui.SameLine()
-            if imgui.Button('Remove', { 75, 50 }) then
-                table.remove(window.buttons, editing_button_index)
-                save_job_settings(clicky.settings, last_job_id)
-                isEditWindowOpen = false
-                editing_button_index = nil
-                editing_window_id = nil
-            end
-
-            imgui.SameLine()
-            if imgui.Button('Close', { 75, 50 }) then
-                isEditWindowOpen = false
-                editing_button_index = nil
-                editing_window_id = nil
             end
 
             imgui.End()
@@ -552,35 +588,6 @@ local function render_buttons_window(window)
     end
 end
 
-
--- local function job_change_cb()
---     local player = AshitaCore:GetMemoryManager():GetPlayer()
---     if not player then
---         print('Error: Unable to get player memory manager')
---         return
---     end
-
---     local job_id = player:GetMainJob()
---     if job_id ~= last_job_id then
---         if last_job_id then
---             save_job_settings(clicky.settings, last_job_id)
---         end
-
---         local new_settings = load_job_settings(job_id)
-        
---         -- Assign window positions from loaded settings to the current settings
---         for i, window in ipairs(clicky.settings.windows) do
---             if new_settings.windows[i] then
---                 window.window_pos.x = new_settings.windows[i].window_pos.x
---                 window.window_pos.y = new_settings.windows[i].window_pos.y
---             end
---         end
-
---         clicky.settings = new_settings
---         last_job_id = job_id
---     end
--- end
-
 local function update_window_positions()
     for _, window in ipairs(clicky.settings.windows) do
         imgui.SetNextWindowPos({ window.window_pos.x, window.window_pos.y }, ImGuiCond_Always)
@@ -607,25 +614,6 @@ local function job_change_cb()
         
     end
 end
-
-
--- local function job_change_cb()
---     local player = AshitaCore:GetMemoryManager():GetPlayer()
---     if not player then
---         print('Error: Unable to get player memory manager')
---         return
---     end
-
---     local job_id = player:GetMainJob()
---     if job_id ~= last_job_id then
---             timer.Simple(5, function() -- 5-second buffer
---                 if last_job_id and edit_mode then
---                     save_job_settings(clicky.settings, last_job_id)
---                 end
---                 clicky.settings = load_job_settings(job_id)
---             end)
---     end
--- end
 
 -- Initialize last time for delta time calculation
 local last_time = os.clock()
