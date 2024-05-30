@@ -1,16 +1,16 @@
-addon.name      = 'Clicky';
-addon.author    = 'Oxos';
-addon.version   = '1.0';
-addon.desc      = 'Customizable Buttons for Final Fantasy XI.';
+addon.name      = 'Clicky'
+addon.author    = 'Oxos'
+addon.version   = '1.0'
+addon.desc      = 'Customizable Buttons for Final Fantasy XI.'
 
-require('common');
-local imgui = require('imgui');
-local settings = require('settings');
-local d3d = require('d3d8');
-local ffi = require('ffi');
-local images = require("images");
+require('common')
+local imgui = require('imgui')
+local settings = require('settings')
+local d3d = require('d3d8')
+local ffi = require('ffi')
+local images = require("images")
 local timer = require("timer")
-local guiimages = images.loadTextures();
+local guiimages = images.loadTextures()
 
 -- Define dark blue style
 local darkBluePfStyles = {
@@ -36,13 +36,19 @@ local darkBluePfStyles = {
     -- Add other colors as needed
 }
 
-local function setup_imgui_style()
-    for _, style in ipairs(darkBluePfStyles) do
-        imgui.PushStyleColor(style[1], style[2])
+-- Push and pop style functions
+local function PushStyles(styles)
+    for _, s in pairs(styles) do
+        imgui.PushStyleColor(s[1], s[2])
     end
 end
 
-setup_imgui_style()
+local function PopStyles(styles)
+    for _ in pairs(styles) do
+        imgui.PopStyleColor()
+    end
+end
+
 -- Your existing code continues here...
 local jobIconMapping = {
     [1] = 'WAR',
@@ -227,7 +233,6 @@ local function initial_load_settings()
         end
         loaded_settings = default_settings
     end
-
     return T(migrate_old_settings(loaded_settings))
 end
 
@@ -322,6 +327,9 @@ local function render_edit_window()
         if not button.commands then
             button.commands = {}
         end
+
+        PushStyles(darkBluePfStyles)  -- Push styles
+
         -- ImGuiWindowFlags_AlwaysAutoResize
         if imgui.Begin('Edit Button', true,ImGuiWindowFlags_AlwaysAutoResize) then
             
@@ -470,6 +478,8 @@ local function render_edit_window()
 
             imgui.End()
         end
+
+        PopStyles(darkBluePfStyles)  -- Pop styles
     end
 end
 
@@ -515,6 +525,9 @@ local function render_buttons_window(window)
     end
 
     imgui.SetNextWindowBgAlpha(edit_mode and 0.5 or window.opacity)
+
+    PushStyles(darkBluePfStyles)  -- Push styles
+
     if imgui.Begin('Clicky Buttons ' .. window.id, true, windowFlags) then
         if edit_mode then
             imgui.SetCursorPosY(0)
@@ -586,6 +599,8 @@ local function render_buttons_window(window)
 
         imgui.End()
     end
+
+    PopStyles(darkBluePfStyles)  -- Pop styles
 end
 
 local function update_window_positions()
@@ -620,6 +635,7 @@ local last_time = os.clock()
 
 ashita.events.register('d3d_present', 'present_cb', function()
     job_change_cb()
+    
     -- Calculate delta time
     local current_time = os.clock()
     local dt = current_time - last_time
