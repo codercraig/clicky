@@ -75,13 +75,13 @@ local jobIconMapping = {
     [22] = 'GEO',
 }
 
-local function drawJobIcon(jobID)
-    local total = 22
-    local ratio = 1 / total
-    local iconID = jobID - 1
+-- local function drawJobIcon(jobID)
+--     local total = 22
+--     local ratio = 1 / total
+--     local iconID = jobID - 1
 
-    imgui.Image(tonumber(ffi.cast("uint32_t", guiimages.jobs)), { 48, 48 }, { ratio * iconID, 0 }, { ratio * iconID + ratio, 1 }, { 1, 1, 1, 1 }, { 0, 0, 0, 0 })
-end
+--     imgui.Image(tonumber(ffi.cast("uint32_t", guiimages.jobs)), { 48, 48 }, { ratio * iconID, 0 }, { ratio * iconID + ratio, 1 }, { 1, 1, 1, 1 }, { 0, 0, 0, 0 })
+-- end
 
 -- Default Settings
 -- Update default settings button structure to support multiple commands
@@ -168,24 +168,6 @@ local function save_job_settings(settings_table, job)
     end
 end
 
-local function migrate_old_settings(old_settings)
-    local new_settings = old_settings
-
-    for _, window in ipairs(new_settings.windows) do
-        for _, button in ipairs(window.buttons) do
-            if type(button.commands[1]) == "string" then
-                local old_commands = button.commands
-                button.commands = {}
-                for _, cmd in ipairs(old_commands) do
-                    table.insert(button.commands, { command = cmd, delay = 0 })
-                end
-            end
-        end
-    end
-
-    return new_settings
-end
-
 local function load_job_settings(job)
     local job_name = jobIconMapping[job]
     if not job_name then
@@ -233,7 +215,7 @@ local function initial_load_settings()
         end
         loaded_settings = default_settings
     end
-    return T(migrate_old_settings(loaded_settings))
+    return T(loaded_settings)
 end
 
 -- Clicky Variables
@@ -510,16 +492,15 @@ local function render_buttons_window(window)
     imgui.SetNextWindowPos({ window.window_pos.x, window.window_pos.y }, set_pos_cond)
 
     local windowFlags = bit.bor(
-        ImGuiWindowFlags_NoTitleBar,
-        ImGuiWindowFlags_NoResize,
-        ImGuiWindowFlags_NoScrollbar,
-        ImGuiWindowFlags_AlwaysAutoResize,
-        ImGuiWindowFlags_NoCollapse,
-        ImGuiWindowFlags_NoNav,
-        ImGuiWindowFlags_NoBringToFrontOnFocus,
-        (edit_mode and 0 or ImGuiWindowFlags_NoMove)
-    )
-
+    ImGuiWindowFlags_NoTitleBar,
+    ImGuiWindowFlags_NoResize,
+    ImGuiWindowFlags_NoScrollbar,
+    ImGuiWindowFlags_AlwaysAutoResize,
+    ImGuiWindowFlags_NoCollapse,
+    ImGuiWindowFlags_NoNav,
+    ImGuiWindowFlags_NoBringToFrontOnFocus,
+    (edit_mode and 0 or ImGuiWindowFlags_NoMove)
+)
     if not edit_mode then
         windowFlags = bit.bor(windowFlags, ImGuiWindowFlags_NoBackground, ImGuiWindowFlags_NoDecoration)
     end
@@ -647,7 +628,7 @@ ashita.events.register('d3d_present', 'present_cb', function()
             render_buttons_window(window)
         end
         render_edit_window()
-        imgui.Render()
+        --imgui.Render()
     end
 end)
 
