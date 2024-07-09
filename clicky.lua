@@ -141,6 +141,33 @@ local edit_mode = false -- Track if edit mode is active
 local debug_printed = false
 local debug_save = false
 
+local show_info_window = false
+local current_profile = "No profile loaded"  -- Variable to hold the name of the currently loaded profile
+
+local function render_info_window()
+    if not show_info_window then return end
+
+    imgui.SetNextWindowBgAlpha(0.8)
+    
+    -- Use ImGuiWindowFlags_AlwaysAutoResize for auto-resizing and ImGuiWindowFlags_NoCollapse to prevent collapsing
+    -- The third parameter `open` will determine if the window remains open
+    local open = show_info_window
+    if imgui.Begin('Clicky Info', open, ImGuiWindowFlags_NoTitleBar + ImGuiWindowFlags_AlwaysAutoResize + ImGuiWindowFlags_NoCollapse) then
+        imgui.Text("Clicky Addon V0")
+        imgui.Separator()
+        imgui.Text(string.format("Profile loaded: %s", current_profile))
+        imgui.End()
+    end
+    
+    
+        -- Check if the window should be closed
+    if not open then
+        show_info_window = false
+    end
+end
+
+
+
 local function save_job_settings(settings_table, job)
     if not edit_mode then
         return
@@ -196,6 +223,7 @@ local function load_job_settings(job)
         loaded_settings = default_settings
     end
 
+    current_profile = string.format('%s_settings.lua', job_name)  -- Set the current profile name
     return T(loaded_settings)
 end
 
@@ -314,7 +342,7 @@ local function render_edit_window()
         PushStyles(darkBluePfStyles)  -- Push styles
 
         -- ImGuiWindowFlags_AlwaysAutoResize
-        if imgui.Begin('Edit Button', true,ImGuiWindowFlags_AlwaysAutoResize) then
+        if imgui.Begin('Edit Button', true,ImGuiWindowFlags_AlwaysAutoResize + ImGuiWindowFlags_NoTitleBar) then
             
 
             if imgui.Button('Save', { 50, 25 }) then
@@ -629,6 +657,7 @@ ashita.events.register('d3d_present', 'present_cb', function()
             render_buttons_window(window)
         end
         render_edit_window()
+        render_info_window()  -- Render the info window
         --imgui.Render()
     end
 end)
@@ -642,8 +671,9 @@ ashita.events.register('command', 'command_cb', function (e)
     e.blocked = true
 
     -- Check if additional arguments are provided
+       
     if #args == 1 then
-        print(chat.header(addon.name):append(chat.error('Usage: /clicky [show|hide|addnew|edit] [on|off] [window_id]')))
+        show_info_window = not show_info_window
         return
     end
 
