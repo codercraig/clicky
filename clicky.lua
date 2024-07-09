@@ -10,6 +10,7 @@ local d3d = require('d3d8')
 local ffi = require('ffi')
 local images = require("images")
 local timer = require("timer")
+local chat = require('chat')
 local guiimages = images.loadTextures()
 
 -- Define dark blue style
@@ -164,7 +165,7 @@ local function save_job_settings(settings_table, job)
     if not success then
         print(string.format('Failed to save settings for job: %s (%d), error: %s', job_name, job, err))
     else
-        --print(string.format('Saved settings for job: %s (%d)', job_name, job))  -- Debug print statement
+        print(string.format('Saved settings for job: %s (%d)', job_name, job))  -- Debug print statement
     end
 end
 
@@ -241,13 +242,13 @@ local function execute_commands(commands)
     local function execute_next_command()
         if index <= #commands then
             local command = commands[index]
-            print(string.format("Executing command %d: %s", index, command.command))  -- Debug message
+            --print(string.format("Executing command %d: %s", index, command.command))  -- Debug message
             AshitaCore:GetChatManager():QueueCommand(1, command.command)
             index = index + 1
             if index <= #commands then
                 local delay = command.delay or 0
                 if delay > 0 then
-                    print(string.format("Waiting for %d seconds before next command...", delay))
+                    --print(string.format("Waiting for %d seconds before next command...", delay))
                     timer.Simple(delay, execute_next_command)
                 else
                     execute_next_command()
@@ -258,9 +259,9 @@ local function execute_commands(commands)
         end
     end
 
-    print("Starting command execution...")  -- Debug message
+    --print("Starting command execution...")  -- Debug message
     execute_next_command()
-    print("Command execution function started.")  -- Debug message
+    --print("Command execution function started.")  -- Debug message
 end
 
 local function has_target()
@@ -552,7 +553,7 @@ local function render_buttons_window(window)
             imgui.SetCursorPosX(button.pos.x * 80)
             imgui.SetCursorPosY((button.pos.y + 1) * 55)
             if imgui.Button(button.name, { 70, 50 }) then
-                print(string.format("Button %s clicked. Executing commands...", button.name))  -- Debug message
+                --print(string.format("Button %s clicked. Executing commands...", button.name))  -- Debug message
                 execute_commands(button.commands)  -- Adjust the delay as needed
             end
 
@@ -572,7 +573,7 @@ local function render_buttons_window(window)
             if prev_window_pos.x ~= x or prev_window_pos.y ~= y then
                 window.window_pos.x = x
                 window.window_pos.y = y
-                save_job_settings(clicky.settings, last_job_id)
+                --save_job_settings(clicky.settings, last_job_id)
                 prev_window_pos.x = x
                 prev_window_pos.y = y
             end
@@ -640,6 +641,12 @@ ashita.events.register('command', 'command_cb', function (e)
 
     e.blocked = true
 
+    -- Check if additional arguments are provided
+    if #args == 1 then
+        print(chat.header(addon.name):append(chat.error('Usage: /clicky [show|hide|addnew|edit] [on|off] [window_id]')))
+        return
+    end
+
     if #args >= 2 and args[2]:any('show') then
         UpdateVisibility(tonumber(args[3]) or 1, true)
         isRendering = true
@@ -672,6 +679,12 @@ ashita.events.register('command', 'command_cb', function (e)
             window.opacity = 0.0
         end
         save_job_settings(clicky.settings, last_job_id)
+        return
+    end
+
+    if #args >= 2 and args[2]:any('save') then
+        save_job_settings(clicky.settings, last_job_id)  -- Manual save command
+        print('Settings saved manually.')
         return
     end
 
