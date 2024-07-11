@@ -8,10 +8,10 @@ local imgui = require('imgui')
 local settings = require('settings')
 local d3d = require('d3d8')
 local ffi = require('ffi')
-local images = require("images")
+--local images = require("images")
 local timer = require("timer")
 local chat = require('chat')
-local guiimages = images.loadTextures()
+--local guiimages = images.loadTextures()
 
 -- Define dark blue style
 local darkBluePfStyles = {
