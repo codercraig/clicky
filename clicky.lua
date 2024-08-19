@@ -317,17 +317,15 @@ local settings_buffers = {
 
 --test
 
--- Example lists for each dropdown
-local action_types = { "/ma", "/ja", "/ws" } -- Magic, Ability, Weapon Skill
-local magic_spells = { "Cure", "Cure II", "Cure III", "Cure IV", "Cure V", "Cure VI" } -- Example spells
-local abilities = { "Provoke", "Shield Bash", "Sneak Attack" } -- Example abilities
-local targets = { "<me>", "<t>", "<bt>", "<stnpc>", "<stal>" } -- Example target types
+-- Define the dropdown options
+local action_types = { "/ma", "/ja", "/ws", "/item" }  -- Example action types
+local spells = { "Cure", "Cure II", "Cure III", "Cure IV", "Cure V" }  -- Example spells
+local targets = { "<me>", "<t>", "<stpc>", "<stpt>", "<stal>", "<p0>" }  -- Example targets
 
--- Default selections for each dropdown
+-- Variables to store the selected options
 local selected_action_type = 1
 local selected_spell = 1
 local selected_target = 1
-
 
 local function render_edit_window()
     if isEditWindowOpen and editing_button_index ~= nil then
@@ -363,7 +361,7 @@ local function render_edit_window()
             end
 
             imgui.Separator()
-            imgui.NewLine()  -- Add a new line here
+            imgui.NewLine()
 
             -- Button Name
             imgui.Text('Button Name:')
@@ -380,18 +378,81 @@ local function render_edit_window()
             end
 
             imgui.Separator()
-            imgui.NewLine()  -- Add a new line here
-
-            --Layout for Left, Right, and Middle Click Commands
-            -- imgui.Columns(3, nil, false) -- 3 columns, no border
+            imgui.NewLine()
 
             -- Left Click Commands
             imgui.Text('Left Click Commands:')
             for cmdIndex, cmdInfo in ipairs(button.commands) do
+                
+                 -- Action Type Dropdown
+                 imgui.Text('Action Type:')
+                 imgui.SetNextItemWidth(100)
+                 imgui.SameLine()
+                 if imgui.BeginCombo("##ActionType"..cmdIndex, action_types[selected_action_type]) then
+                     for i = 1, #action_types do
+                         local is_selected = (i == selected_action_type)
+                         if imgui.Selectable(action_types[i], is_selected) then
+                             selected_action_type = i
+                             cmdInfo.command = action_types[i] .. " " .. spells[selected_spell] .. " " .. targets[selected_target]
+                         end
+                         if is_selected then
+                             imgui.SetItemDefaultFocus()
+                         end
+                     end
+                     imgui.EndCombo()
+                 end
+ 
+                 imgui.SetNextItemWidth(100)
+                 --imgui.SameLine()
+
+                 -- Spell Dropdown
+                 imgui.Text('Spell:')
+                 imgui.SetNextItemWidth(100)
+                 imgui.SameLine()
+                 if imgui.BeginCombo("##Spell"..cmdIndex, spells[selected_spell]) then
+                     for i = 1, #spells do
+                         local is_selected = (i == selected_spell)
+                         if imgui.Selectable(spells[i], is_selected) then
+                             selected_spell = i
+                             cmdInfo.command = action_types[selected_action_type] .. " " .. spells[i] .. " " .. targets[selected_target]
+                         end
+                         if is_selected then
+                             imgui.SetItemDefaultFocus()
+                         end
+                     end
+                     imgui.EndCombo()
+                 end
+ 
+                 imgui.SetNextItemWidth(100)
+                 --imgui.SameLine()
+
+                 -- Target Dropdown
+                 imgui.Text('Target:')
+                 imgui.SetNextItemWidth(100)
+                 imgui.SameLine()
+                 if imgui.BeginCombo("##Target"..cmdIndex, targets[selected_target]) then
+                     for i = 1, #targets do
+                         local is_selected = (i == selected_target)
+                         if imgui.Selectable(targets[i], is_selected) then
+                             selected_target = i
+                             cmdInfo.command = action_types[selected_action_type] .. " " .. spells[selected_spell] .. " " .. targets[i]
+                         end
+                         if is_selected then
+                             imgui.SetItemDefaultFocus()
+                         end
+                     end
+                     imgui.EndCombo()
+                 end
+
+                -- Compile the command from selected dropdowns, adding quotes around the spell
+                local compiled_command = string.format('%s "%s" %s', action_types[selected_action_type], spells[selected_spell], targets[selected_target])
+                cmdInfo.command = compiled_command
+ 
                 local cmdBuffer = { cmdInfo.command }
                 local delayBuffer = { tostring(cmdInfo.delay) }
                 if imgui.InputText('##EditButtonCommand' .. cmdIndex, cmdBuffer, seacom.command_buffer_size) then
-                    button.commands[cmdIndex].command = cmdBuffer[1]
+                    -- Update command based on dropdown selection
+                    button.commands[cmdIndex].command = action_types[selected_action_type] .. " " .. cmdBuffer[1]
                 end
                 imgui.SameLine()
                 imgui.SetNextItemWidth(50)
@@ -401,7 +462,7 @@ local function render_edit_window()
                 end
                 imgui.SameLine()
                 if imgui.Button('Test##LeftClick' .. cmdIndex, { 50, 25 }) then
-                    execute_commands({ cmdInfo })
+                    execute_commands({ { command = compiled_command, delay = cmdInfo.delay } })
                 end
             end
             if imgui.Button('+Add', { 110, 40 }) then
@@ -416,7 +477,7 @@ local function render_edit_window()
 
             imgui.NextColumn() -- Move to the second column
             imgui.Separator()
-            imgui.NewLine()  -- Add a new line here
+            imgui.NewLine()
 
             -- Right Click Commands
             imgui.Text('Right Click Commands:')
@@ -424,7 +485,8 @@ local function render_edit_window()
                 local cmdBuffer = { cmdInfo.command }
                 local delayBuffer = { tostring(cmdInfo.delay) }
                 if imgui.InputText('##EditRightClickCommand' .. cmdIndex, cmdBuffer, seacom.command_buffer_size) then
-                    button.right_click_commands[cmdIndex].command = cmdBuffer[1]
+                    -- Update command based on dropdown selection
+                    button.right_click_commands[cmdIndex].command = action_types[selected_action_type] .. " " .. cmdBuffer[1]
                 end
                 imgui.SameLine()
                 imgui.SetNextItemWidth(50)
@@ -449,7 +511,7 @@ local function render_edit_window()
 
             imgui.NextColumn() -- Move to the third column
             imgui.Separator()
-            imgui.NewLine()  -- Add a new line here
+            imgui.NewLine()
 
             -- Middle Mouse Button Commands
             imgui.Text('Middle Mouse Button Commands:')
@@ -457,7 +519,8 @@ local function render_edit_window()
                 local cmdBuffer = { cmdInfo.command }
                 local delayBuffer = { tostring(cmdInfo.delay) }
                 if imgui.InputText('##EditMiddleClickCommand' .. cmdIndex, cmdBuffer, seacom.command_buffer_size) then
-                    button.middle_click_commands[cmdIndex].command = cmdBuffer[1]
+                    -- Update command based on dropdown selection
+                    button.middle_click_commands[cmdIndex].command = action_types[selected_action_type] .. " " .. cmdBuffer[1]
                 end
                 imgui.SameLine()
                 imgui.SetNextItemWidth(50)
@@ -483,7 +546,7 @@ local function render_edit_window()
             imgui.Columns(1) -- Reset to single column
 
             imgui.Separator()
-            imgui.NewLine()  -- Add a new line here
+            imgui.NewLine()
 
             -- Movement Buttons
             if imgui.Button('<', { 50, 50 }) then
