@@ -59,7 +59,6 @@ local jobIconMapping = {
 }
 
 -- Default settings
--- Default settings
 local default_settings = {
     visible = { true },
     opacity = { 1.0 },
@@ -126,7 +125,6 @@ local default_settings = {
         }
     }
 }
-
 
 local last_job_id = nil -- Track the last job ID
 local isRendering = false -- Track if rendering should occur
@@ -418,7 +416,6 @@ local function get_job_spells_and_abilities(job_id)
         }
 
         abilities = {
-            -- Include Black Mage abilities up to level 75 here
             "Manafont",
             "Elemental Seal",
             "Tranquil Heart",
@@ -434,11 +431,9 @@ local targets = { "","<me>", "<t>", "<stpc>", "<stpt>", "<stal>", "<p0>", "on", 
 local selected_action_type = 1
 local selected_spell = 1
 local selected_target = 1
---local selected_ability = whm_job_abilities[button.spell_states[cmdIndex]] or ""
 
 local spell_search_input = ""  -- For search box
 local search_input = { "" } -- Initialize the search input as a table with an empty string
-
 
 
 local function render_edit_window()
@@ -457,6 +452,13 @@ local function render_edit_window()
         if not button.target_states then button.target_states = {} end
         if not button.search_inputs then button.search_inputs = {} end
         if not button.delays then button.delays = {} end
+
+        -- Initialize right-click specific states
+        if not button.right_click_action_type_states then button.right_click_action_type_states = {} end
+        if not button.right_click_spell_states then button.right_click_spell_states = {} end
+        if not button.right_click_target_states then button.right_click_target_states = {} end
+        if not button.right_click_search_inputs then button.right_click_search_inputs = {} end
+        if not button.right_click_delays then button.right_click_delays = {} end
 
         -- Get job IDs
         local main_job_id = get_player_main_job()
@@ -482,6 +484,15 @@ local function render_edit_window()
             button.target_states[i] = button.target_states[i] or selected_target
             button.search_inputs[i] = button.search_inputs[i] or { "" }
             button.delays[i] = button.delays[i] or { tostring(button.commands[i].delay or 0) }
+        end
+
+        -- Initialize states for right-click commands
+        for i = 1, #button.right_click_commands do
+            button.right_click_action_type_states[i] = button.right_click_action_type_states[i] or selected_action_type
+            button.right_click_spell_states[i] = button.right_click_spell_states[i] or selected_spell
+            button.right_click_target_states[i] = button.right_click_target_states[i] or selected_target
+            button.right_click_search_inputs[i] = button.right_click_search_inputs[i] or { "" }
+            button.right_click_delays[i] = button.right_click_delays[i] or { tostring(button.right_click_commands[i].delay or 0) }
         end
 
         PushStyles(darkBluePfStyles)
@@ -510,7 +521,6 @@ local function render_edit_window()
 
             imgui.Separator()
             
-
             -- Button Name
             imgui.Text('Button Name:')
             if imgui.Button('DEL', { 50, 25 }) then
@@ -532,7 +542,7 @@ local function render_edit_window()
             imgui.Text('Left Click Commands:')
             for cmdIndex, cmdInfo in ipairs(button.commands) do
                 
-                -- Setup ablities and spells
+                -- Setup abilities and spells
                 local filtered_spells_or_abilities = {}
 
                 -- Size of Target Dropdown
@@ -587,8 +597,6 @@ local function render_edit_window()
                             cmdInfo.target = targets[i] or ""
                             cmdInfo.spell = cmdInfo.spell or ""
                             cmdInfo.command = action_type_map[action_types[button.action_type_states[cmdIndex]]] .. " " .. cmdInfo.spell .. " " .. cmdInfo.target
-                        
-                            --cmdInfo.command = action_type_map[action_types[button.action_type_states[cmdIndex]]] .. " \"" .. filtered_spells_or_abilities[i] .. "\" " .. targets[button.target_states[cmdIndex]]
                         end
                         if is_selected then
                             imgui.SetItemDefaultFocus()
@@ -607,9 +615,6 @@ local function render_edit_window()
                             button.target_states[cmdIndex] = i
                             cmdInfo.spell = cmdInfo.spell or ""
                             cmdInfo.target = cmdInfo.target or ""
-                            -- cmdInfo.command = action_type_map[action_types[i]] .. " " .. cmdInfo.spell .. " " .. cmdInfo.target
-                        
-                        
                             cmdInfo.command = action_type_map[action_types[button.action_type_states[cmdIndex]]] .. " " .. cmdInfo.spell .. " " .. cmdInfo.target
                         end
                         if is_selected then
@@ -658,65 +663,124 @@ local function render_edit_window()
                 execute_commands(button.commands)
             end
 
-            imgui.NextColumn() -- Move to the second column
             imgui.Separator()
             imgui.NewLine()
 
-            -- Right Click Commands
+            -- Right Click Commands Section
+            imgui.Separator()
             imgui.Text('Right Click Commands:')
             for cmdIndex, cmdInfo in ipairs(button.right_click_commands) do
-                local cmdBuffer = { cmdInfo.command }
-                local delayBuffer = { tostring(cmdInfo.delay) }
-                if imgui.InputText('##EditRightClickCommand' .. cmdIndex, cmdBuffer, seacom.command_buffer_size) then
-                    button.right_click_commands[cmdIndex].command = cmdBuffer[1]
+                -- Code similar to the left-click commands, but using the right-click state variables
+                local filtered_spells_or_abilities = {}
+
+                imgui.SetNextItemWidth(150)
+                if imgui.BeginCombo("##RightClickActionType"..cmdIndex, action_types[button.right_click_action_type_states[cmdIndex]] or "") then
+                    for i = 1, #action_types do
+                        local is_selected = (i == button.right_click_action_type_states[cmdIndex])
+                        if imgui.Selectable(action_types[i], is_selected) then
+                            button.right_click_action_type_states[cmdIndex] = i
+                            cmdInfo.spell = filtered_spells_or_abilities[i] or ""
+                            cmdInfo.target = cmdInfo.target or ""
+                            cmdInfo.command = action_type_map[action_types[button.right_click_action_type_states[cmdIndex]]] .. " " .. (cmdInfo.spell or "") .. " " .. (cmdInfo.target or "")
+                        end
+                        if is_selected then
+                            imgui.SetItemDefaultFocus()
+                        end
+                    end
+                    imgui.EndCombo()
                 end
+
+                imgui.SameLine()
+                imgui.SetNextItemWidth(150)
+                if imgui.InputTextWithHint("##RightClickSearchSpell"..cmdIndex, "Search...", button.right_click_search_inputs[cmdIndex], 256) then
+                    button.right_click_search_inputs[cmdIndex][1] = button.right_click_search_inputs[cmdIndex][1]
+                end
+
+                if action_types[button.right_click_action_type_states[cmdIndex]] == "Magic" then
+                    for _, spell in ipairs(combined_spells) do
+                        if button.right_click_search_inputs[cmdIndex][1] == "" or string.find(spell:lower(), button.right_click_search_inputs[cmdIndex][1]:lower()) then
+                            table.insert(filtered_spells_or_abilities, spell)
+                        end
+                    end
+                elseif action_types[button.right_click_action_type_states[cmdIndex]] == "Abilities" then
+                    for _, ability in ipairs(combined_abilities) do
+                        if button.right_click_search_inputs[cmdIndex][1] == "" or string.find(ability:lower(), button.right_click_search_inputs[cmdIndex][1]:lower()) then
+                            table.insert(filtered_spells_or_abilities, ability)
+                        end
+                    end
+                end
+
+                imgui.SameLine()
+                imgui.SetNextItemWidth(150)
+                if imgui.BeginCombo("##RightClickSpell"..cmdIndex, filtered_spells_or_abilities[button.right_click_spell_states[cmdIndex]] or "") then
+                    for i = 1, #filtered_spells_or_abilities do
+                        local is_selected = (filtered_spells_or_abilities[i] == filtered_spells_or_abilities[button.right_click_spell_states[cmdIndex]])
+                        if imgui.Selectable(filtered_spells_or_abilities[i], is_selected) then
+                            button.right_click_spell_states[cmdIndex] = i
+                            cmdInfo.target = targets[i] or ""
+                            cmdInfo.spell = cmdInfo.spell or ""
+                            cmdInfo.command = action_type_map[action_types[button.right_click_action_type_states[cmdIndex]]] .. " " .. cmdInfo.spell .. " " .. cmdInfo.target
+                        end
+                        if is_selected then
+                            imgui.SetItemDefaultFocus()
+                        end
+                    end
+                    imgui.EndCombo()
+                end
+
+                imgui.SameLine()
+                imgui.SetNextItemWidth(100)
+                if imgui.BeginCombo("##RightClickTarget"..cmdIndex, targets[button.right_click_target_states[cmdIndex]] or "") then
+                    for i = 1, #targets do
+                        local is_selected = (i == button.right_click_target_states[cmdIndex])
+                        if imgui.Selectable(targets[i], is_selected) then
+                            button.right_click_target_states[cmdIndex] = i
+                            cmdInfo.spell = cmdInfo.spell or ""
+                            cmdInfo.target = cmdInfo.target or ""
+                            cmdInfo.command = action_type_map[action_types[button.right_click_action_type_states[cmdIndex]]] .. " " .. cmdInfo.spell .. " " .. cmdInfo.target
+                        end
+                        if is_selected then
+                            imgui.SetItemDefaultFocus()
+                        end
+                    end
+                    imgui.EndCombo()
+                end
+
+                local compiled_command = string.format('%s "%s" %s', action_type_map[action_types[button.right_click_action_type_states[cmdIndex]]], filtered_spells_or_abilities[button.right_click_spell_states[cmdIndex]] or "", targets[button.right_click_target_states[cmdIndex]])
+                cmdInfo.command = compiled_command
+
                 imgui.SameLine()
                 imgui.SetNextItemWidth(50)
-                if imgui.InputText('##EditRightClickDelay' .. cmdIndex, delayBuffer, 5) then
-                    local delay = tonumber(delayBuffer[1]) or 0
-                    button.right_click_commands[cmdIndex].delay = delay
-                end
-            end
-            if imgui.Button('+Add ', { 110, 40 }) then
-                table.insert(button.right_click_commands, { command = "", delay = 0 })
-            end
-            imgui.SameLine()
-            if imgui.Button('-Remove ', { 110, 40 }) then
-                if #button.right_click_commands > 0 then
-                    table.remove(button.right_click_commands, #button.right_click_commands)
+                if imgui.InputText('##RightClickEditButtonDelay' .. cmdIndex, button.right_click_delays[cmdIndex], 5) then
+                    button.right_click_commands[cmdIndex].delay = tonumber(button.right_click_delays[cmdIndex][1]) or 0
                 end
             end
 
-            imgui.NextColumn() -- Move to the third column
-            imgui.Separator()
             imgui.NewLine()
-
-            -- Middle Mouse Button Commands
-            imgui.Text('Middle Mouse Button Commands:')
-            for cmdIndex, cmdInfo in ipairs(button.middle_click_commands) do
-                local cmdBuffer = { cmdInfo.command }
-                local delayBuffer = { tostring(cmdInfo.delay) }
-                if imgui.InputText('##EditMiddleClickCommand' .. cmdIndex, cmdBuffer, seacom.command_buffer_size) then
-                    button.middle_click_commands[cmdIndex].command = cmdBuffer[1]
-                end
-                imgui.SameLine()
-                imgui.SetNextItemWidth(50)
-                if imgui.InputText('##EditMiddleClickDelay' .. cmdIndex, delayBuffer, 5) then
-                    local delay = tonumber(delayBuffer[1]) or 0
-                    button.middle_click_commands[cmdIndex].delay = delay
-                end
-            end
-            if imgui.Button('+Add  ', { 110, 40 }) then
-                table.insert(button.middle_click_commands, { command = "", delay = 0 })
+            if imgui.Button('+Add Right Click Command', { 110, 40 }) then
+                imgui.NewLine()
+                table.insert(button.right_click_commands, { command = "", delay = 0 })
+                table.insert(button.right_click_action_type_states, selected_action_type)
+                table.insert(button.right_click_spell_states, selected_spell)
+                table.insert(button.right_click_target_states, selected_target)
+                table.insert(button.right_click_search_inputs, { "" })
+                table.insert(button.right_click_delays, { "0" })
             end
             imgui.SameLine()
-            if imgui.Button('-Remove  ', { 110, 40 }) then
-                if #button.middle_click_commands > 0 then
-                    table.remove(button.middle_click_commands, #button.middle_click_commands)
+            if imgui.Button('-Remove Right Click Command', { 110, 40 }) then
+                if #button.right_click_commands > 1 then
+                    table.remove(button.right_click_commands, #button.right_click_commands)
+                    table.remove(button.right_click_action_type_states, #button.right_click_action_type_states)
+                    table.remove(button.right_click_spell_states, #button.right_click_spell_states)
+                    table.remove(button.right_click_target_states, #button.right_click_target_states)
+                    table.remove(button.right_click_search_inputs, #button.right_click_search_inputs)
+                    table.remove(button.right_click_delays, #button.right_click_delays)
                 end
             end
-
-            imgui.Columns(1) -- Reset to single column
+            imgui.SameLine()
+            if imgui.Button('Execute Right Click Commands', { 110, 40 }) then
+                execute_commands(button.right_click_commands)
+            end
 
             imgui.Separator()
             imgui.NewLine()
@@ -807,7 +871,6 @@ local function render_edit_window()
         PopStyles(darkBluePfStyles)
     end
 end
-
 
 
 
