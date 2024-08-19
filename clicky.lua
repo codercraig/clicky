@@ -11,6 +11,7 @@ local ffi = require('ffi')
 local timer = require("timer")
 local chat = require('chat')
 
+
 -- Define dark blue style
 local darkBluePfStyles = {
     {ImGuiCol_Text, {1.0, 1.0, 1.0, 1.0}}, -- White text
@@ -316,43 +317,129 @@ local settings_buffers = {
 }
 
 -- Define the dropdown options
-local action_types = { "/ma", "/ja", "/ws", "/item", "/clicky" }  -- Example action types
+local action_types = { "Magic", "Abilities", "Weapon Skills", "Items", "/clicky" }
 
-local whm_job_abilities = {
-    "Benediction",
-    "Divine Seal",
-    "Afflatus Solace",
-    "Afflatus Misery",
-    "Devotion",
-    "Martyr",
+local action_type_map = {
+    ["Magic"] = "/ma",
+    ["Abilities"] = "/ja",
+    ["Weapon Skills"] = "/ws",
+    ["Items"] = "/item",
+    ["/clicky"] = "/clicky"
 }
 
+-- Initialize combined lists for spells and abilities
+local combined_spells = { "" }  -- Start with an empty string to prevent nil index errors
+local combined_abilities = { "" }  -- Same here
 
+local function update_spells_and_abilities()
+    -- Clear the existing lists
+    combined_spells = { "" }
+    combined_abilities = { "" }
 
-local spells = {
-    "Cure", "Cure II", "Cure III", "Cure IV", "Cure V", "Curaga", "Curaga II", "Curaga III",
-    "Raise", "Raise II", "Reraise", "Reraise II", "Poisona", "Paralyna", "Blindna", "Silena",
-    "Stona", "Viruna", "Cursna", "Dia", "Dia II", "Banish", "Banish II", "Banish III", 
-    "Banishga", "Banishga II", "Diaga", "Holy", "Holy II", "Protect", "Protect II", "Protect III", 
-    "Protect IV", "Shell", "Shell II", "Shell III", "Shell IV", "Regen", "Regen II", "Regen III",
-    "Regen IV", "Auspice", "Erase", "Haste", "Barstonra", "Barwatera", "Baraera", "Barfira",
-    "Barblizzara", "Barthundra", "Barstone", "Barwater", "Baraero", "Barfire", "Barblizzard", 
-    "Barthunder", "Barpoison", "Barparalyze", "Barsleep", "Barblind", "Barsilence", "Barpetrify",
-    "Barvirus", "Boost", "Aquaveil", "Stoneskin", "Blink", "Deodorize", "Sneak", 
-    "Invisible", "Reraise", "Teleport-Mea", "Teleport-Dem", "Teleport-Holla", 
-    "Teleport-Altep", "Teleport-Yhoat", "Teleport-Vahzl",
-    "Protectra", "Protectra II", "Protectra III", "Protectra IV", "Shellra", "Shellra II", 
-    "Shellra III", "Shellra IV", "Reraise III", "Enlight", "edit"
-}
-local targets = { "<me>", "<t>", "<stpc>", "<stpt>", "<stal>", "<p0>", "on", "off"  }  -- Example targets we can use for macros
+    local player = AshitaCore:GetMemoryManager():GetPlayer()
+    local job_id = player:GetMainJob()
+    local subjob_id = player:GetSubJob()
+
+    -- Populate combined_spells and combined_abilities based on job_id and subjob_id
+    if job_id == 3 then  -- WHM
+        if whm_spells and #whm_spells > 0 then
+            for _, spell in ipairs(whm_spells) do
+                table.insert(combined_spells, spell)
+            end
+        end
+        if whm_job_abilities and #whm_job_abilities > 0 then
+            for _, ability in ipairs(whm_job_abilities) do
+                table.insert(combined_abilities, ability)
+            end
+        end
+    end
+
+    if subjob_id == 4 then  -- BLM
+        if blm_spells and #blm_spells > 0 then
+            for _, spell in ipairs(blm_spells) do
+                table.insert(combined_spells, spell)
+            end
+        end
+        if blm_job_abilities and #blm_job_abilities > 0 then
+            for _, ability in ipairs(blm_job_abilities) do
+                table.insert(combined_abilities, ability)
+            end
+        end
+    end
+
+    -- Ensure that the combined lists are not nil
+    combined_spells = combined_spells or { "" }
+    combined_abilities = combined_abilities or { "" }
+end
+
+-- Lets load in the spells/abilities/weaponskills
+local spells_abilities = require('spells_abilities')
+
+local function get_job_spells_and_abilities(job_id)
+    local spells = {}
+    local abilities = {}
+
+    if job_id == 3 then -- WHM
+        spells = {
+            "Cure", "Cure II", "Cure III", "Cure IV", "Cure V", "Curaga", "Curaga II", "Curaga III",
+            "Raise", "Raise II", "Reraise", "Reraise II", "Poisona", "Paralyna", "Blindna", "Silena",
+            "Stona", "Viruna", "Cursna", "Dia", "Dia II", "Banish", "Banish II", "Banish III", 
+            "Banishga", "Banishga II", "Diaga", "Holy", "Holy II", "Protect", "Protect II", "Protect III", 
+            "Protect IV", "Shell", "Shell II", "Shell III", "Shell IV", "Regen", "Regen II", "Regen III",
+            "Regen IV", "Auspice", "Erase", "Haste", "Barstonra", "Barwatera", "Baraera", "Barfira",
+            "Barblizzara", "Barthundra", "Barstone", "Barwater", "Baraero", "Barfire", "Barblizzard", 
+            "Barthunder", "Barpoison", "Barparalyze", "Barsleep", "Barblind", "Barsilence", "Barpetrify",
+            "Barvirus", "Boost", "Aquaveil", "Stoneskin", "Blink", "Deodorize", "Sneak", 
+            "Invisible", "Teleport-Mea", "Teleport-Dem", "Teleport-Holla", 
+            "Teleport-Altep", "Teleport-Yhoat", "Teleport-Vahzl",
+            "Protectra", "Protectra II", "Protectra III", "Protectra IV", "Shellra", "Shellra II", 
+            "Shellra III", "Shellra IV", "Reraise III", "Enlight"
+        }
+
+        abilities = {
+            "Benediction",
+            "Divine Seal",
+            "Afflatus Solace",
+            "Afflatus Misery",
+            "Devotion",
+            "Martyr",
+        }
+    elseif job_id == 4 then -- BLM
+        spells = {
+            -- Include Black Mage spells up to level 75 here
+            "Stone", "Water", "Aero", "Fire", "Blizzard", "Thunder", "Stone II", "Water II",
+            "Aero II", "Fire II", "Blizzard II", "Thunder II", "Stone III", "Water III", "Aero III",
+            "Fire III", "Blizzard III", "Thunder III","Blizzard IV","Thunder IV","Fire IV","Water IV",
+            "Stonega", "Waterga", "Aeroga", "Firaga",
+            "Blizzaga", "Thundaga", "Stonega II", "Waterga II", "Aeroga II", "Firaga II",
+            "Blizzaga II", "Thundaga II", "Poison", "Poison II", "Poisonga", "Bio", "Bio II",
+            "Drain", "Aspir", "Warp", "Warp II", "Escape", "Tractor", "Sleep", "Sleep II",
+            "Bind", "Break", "Dispel", "Stun",
+        }
+
+        abilities = {
+            -- Include Black Mage abilities up to level 75 here
+            "Manafont",
+            "Elemental Seal",
+            "Tranquil Heart",
+        }
+    end
+
+    return spells, abilities
+end
+
+local targets = { "","<me>", "<t>", "<stpc>", "<stpt>", "<stal>", "<p0>", "on", "off"  }  -- Example targets we can use for macros
 
 -- Variables to store the selected options
 local selected_action_type = 1
 local selected_spell = 1
 local selected_target = 1
+--local selected_ability = whm_job_abilities[button.spell_states[cmdIndex]] or ""
 
 local spell_search_input = ""  -- For search box
 local search_input = { "" } -- Initialize the search input as a table with an empty string
+
+
 
 local function render_edit_window()
     if isEditWindowOpen and editing_button_index ~= nil then
@@ -371,6 +458,23 @@ local function render_edit_window()
         if not button.search_inputs then button.search_inputs = {} end
         if not button.delays then button.delays = {} end
 
+        -- Get job IDs
+        local main_job_id = get_player_main_job()
+        local sub_job_id = AshitaCore:GetMemoryManager():GetPlayer():GetSubJob()
+
+        -- Get spells and abilities for main and sub job
+        local main_spells, main_abilities = get_job_spells_and_abilities(main_job_id)
+        local sub_spells, sub_abilities = get_job_spells_and_abilities(sub_job_id)
+
+        -- Combine the main and sub job spells/abilities
+        local combined_spells = {}
+        for _, spell in ipairs(main_spells) do table.insert(combined_spells, spell) end
+        for _, spell in ipairs(sub_spells) do table.insert(combined_spells, spell) end
+
+        local combined_abilities = {}
+        for _, ability in ipairs(main_abilities) do table.insert(combined_abilities, ability) end
+        for _, ability in ipairs(sub_abilities) do table.insert(combined_abilities, ability) end
+
         -- Initialize states based on existing commands
         for i = 1, #button.commands do
             button.action_type_states[i] = button.action_type_states[i] or selected_action_type
@@ -387,6 +491,11 @@ local function render_edit_window()
             if imgui.Button('Save', { 50, 25 }) then
                 button.name = seacom.name_buffer[1]
                 save_job_settings(clicky.settings, last_job_id)
+                
+                -- Exit edit mode
+                edit_mode = false
+                
+                -- Close the edit window
                 isEditWindowOpen = false
                 editing_button_index = nil
                 editing_window_id = nil
@@ -400,7 +509,7 @@ local function render_edit_window()
             end
 
             imgui.Separator()
-            imgui.NewLine()
+            
 
             -- Button Name
             imgui.Text('Button Name:')
@@ -417,19 +526,26 @@ local function render_edit_window()
             end
 
             imgui.Separator()
+            imgui.NewLine()
 
             -- Left Click Commands
             imgui.Text('Left Click Commands:')
             for cmdIndex, cmdInfo in ipairs(button.commands) do
-                -- Action Type Dropdown
-                imgui.SetNextItemWidth(100)
-                if imgui.BeginCombo("##ActionType"..cmdIndex, action_types[button.action_type_states[cmdIndex]]) then
+                
+                -- Setup ablities and spells
+                local filtered_spells_or_abilities = {}
+
+                -- Size of Target Dropdown
+                imgui.SetNextItemWidth(150)
+                
+                if imgui.BeginCombo("##ActionType"..cmdIndex, action_types[button.action_type_states[cmdIndex]] or "") then
                     for i = 1, #action_types do
                         local is_selected = (i == button.action_type_states[cmdIndex])
                         if imgui.Selectable(action_types[i], is_selected) then
                             button.action_type_states[cmdIndex] = i
-                            -- Update the command when the action type changes
-                            cmdInfo.command = action_types[i] .. " " .. (cmdInfo.spell or "") .. " " .. (cmdInfo.target or "")
+                            cmdInfo.spell = filtered_spells_or_abilities[i] or ""
+                            cmdInfo.target = cmdInfo.target or ""
+                            cmdInfo.command = action_type_map[action_types[button.action_type_states[cmdIndex]]] .. " " .. (cmdInfo.spell or "") .. " " .. (cmdInfo.target or "")
                         end
                         if is_selected then
                             imgui.SetItemDefaultFocus()
@@ -438,30 +554,41 @@ local function render_edit_window()
                     imgui.EndCombo()
                 end
 
+                -- Spell Search Bar
                 imgui.SameLine()
                 imgui.SetNextItemWidth(150)
                 if imgui.InputTextWithHint("##SearchSpell"..cmdIndex, "Search...", button.search_inputs[cmdIndex], 256) then
                     button.search_inputs[cmdIndex][1] = button.search_inputs[cmdIndex][1]
                 end
 
-                -- Filter spells based on the search input
-                local filtered_spells = {}
-                for _, spell in ipairs(spells) do
-                    if button.search_inputs[cmdIndex][1] == "" or string.find(spell:lower(), button.search_inputs[cmdIndex][1]:lower()) then
-                        table.insert(filtered_spells, spell)
+                if action_types[button.action_type_states[cmdIndex]] == "Magic" then
+                    for _, spell in ipairs(combined_spells) do
+                        if button.search_inputs[cmdIndex][1] == "" or string.find(spell:lower(), button.search_inputs[cmdIndex][1]:lower()) then
+                            table.insert(filtered_spells_or_abilities, spell)
+                        end
+                    end
+                elseif action_types[button.action_type_states[cmdIndex]] == "Abilities" then
+                    for _, ability in ipairs(combined_abilities) do
+                        if button.search_inputs[cmdIndex][1] == "" or string.find(ability:lower(), button.search_inputs[cmdIndex][1]:lower()) then
+                            table.insert(filtered_spells_or_abilities, ability)
+                        end
                     end
                 end
 
                 imgui.SetNextItemWidth(150)
                 imgui.SameLine()
 
-                -- Spell Dropdown
-                if imgui.BeginCombo("##Spell"..cmdIndex, filtered_spells[button.spell_states[cmdIndex]] or spells[button.spell_states[cmdIndex]]) then
-                    for i = 1, #filtered_spells do
-                        local is_selected = (filtered_spells[i] == spells[button.spell_states[cmdIndex]])
-                        if imgui.Selectable(filtered_spells[i], is_selected) then
+                -- Spell/Ability Dropdown
+                if imgui.BeginCombo("##Spell"..cmdIndex, filtered_spells_or_abilities[button.spell_states[cmdIndex]] or "") then
+                    for i = 1, #filtered_spells_or_abilities do
+                        local is_selected = (filtered_spells_or_abilities[i] == filtered_spells_or_abilities[button.spell_states[cmdIndex]])
+                        if imgui.Selectable(filtered_spells_or_abilities[i], is_selected) then
                             button.spell_states[cmdIndex] = i
-                            cmdInfo.command = action_types[button.action_type_states[cmdIndex]] .. " \"" .. filtered_spells[i] .. "\" " .. targets[button.target_states[cmdIndex]]
+                            cmdInfo.target = targets[i] or ""
+                            cmdInfo.spell = cmdInfo.spell or ""
+                            cmdInfo.command = action_type_map[action_types[button.action_type_states[cmdIndex]]] .. " " .. cmdInfo.spell .. " " .. cmdInfo.target
+                        
+                            --cmdInfo.command = action_type_map[action_types[button.action_type_states[cmdIndex]]] .. " \"" .. filtered_spells_or_abilities[i] .. "\" " .. targets[button.target_states[cmdIndex]]
                         end
                         if is_selected then
                             imgui.SetItemDefaultFocus()
@@ -470,18 +597,20 @@ local function render_edit_window()
                     imgui.EndCombo()
                 end
 
-                imgui.SetNextItemWidth(100)
-                imgui.SameLine()
-
                 -- Target Dropdown
                 imgui.SetNextItemWidth(100)
                 imgui.SameLine()
-                if imgui.BeginCombo("##Target"..cmdIndex, targets[button.target_states[cmdIndex]]) then
+                if imgui.BeginCombo("##Target"..cmdIndex, targets[button.target_states[cmdIndex]] or "") then
                     for i = 1, #targets do
                         local is_selected = (i == button.target_states[cmdIndex])
                         if imgui.Selectable(targets[i], is_selected) then
                             button.target_states[cmdIndex] = i
-                            cmdInfo.command = action_types[button.action_type_states[cmdIndex]] .. " \"" .. filtered_spells[button.spell_states[cmdIndex]] .. "\" " .. targets[i]
+                            cmdInfo.spell = cmdInfo.spell or ""
+                            cmdInfo.target = cmdInfo.target or ""
+                            -- cmdInfo.command = action_type_map[action_types[i]] .. " " .. cmdInfo.spell .. " " .. cmdInfo.target
+                        
+                        
+                            cmdInfo.command = action_type_map[action_types[button.action_type_states[cmdIndex]]] .. " " .. cmdInfo.spell .. " " .. cmdInfo.target
                         end
                         if is_selected then
                             imgui.SetItemDefaultFocus()
@@ -491,7 +620,7 @@ local function render_edit_window()
                 end
 
                 -- Compile the command from selected dropdowns
-                local compiled_command = string.format('%s "%s" %s', action_types[button.action_type_states[cmdIndex]], filtered_spells[button.spell_states[cmdIndex]] or spells[button.spell_states[cmdIndex]], targets[button.target_states[cmdIndex]])
+                local compiled_command = string.format('%s "%s" %s', action_type_map[action_types[button.action_type_states[cmdIndex]]], filtered_spells_or_abilities[button.spell_states[cmdIndex]] or "", targets[button.target_states[cmdIndex]])
                 cmdInfo.command = compiled_command
 
                 -- Display delay input next to the command
@@ -524,13 +653,10 @@ local function render_edit_window()
                     table.remove(button.delays, #button.delays)
                 end
             end
-
-            -- Test Button to execute all commands sequentially
-            imgui.NewLine()
-            if imgui.Button('Test', { 150, 40 }) then
+            imgui.SameLine()
+            if imgui.Button('Execute', { 110, 40 }) then
                 execute_commands(button.commands)
             end
-
 
             imgui.NextColumn() -- Move to the second column
             imgui.Separator()
@@ -542,7 +668,6 @@ local function render_edit_window()
                 local cmdBuffer = { cmdInfo.command }
                 local delayBuffer = { tostring(cmdInfo.delay) }
                 if imgui.InputText('##EditRightClickCommand' .. cmdIndex, cmdBuffer, seacom.command_buffer_size) then
-                    -- Update command based on dropdown selection
                     button.right_click_commands[cmdIndex].command = cmdBuffer[1]
                 end
                 imgui.SameLine()
@@ -572,7 +697,6 @@ local function render_edit_window()
                 local cmdBuffer = { cmdInfo.command }
                 local delayBuffer = { tostring(cmdInfo.delay) }
                 if imgui.InputText('##EditMiddleClickCommand' .. cmdIndex, cmdBuffer, seacom.command_buffer_size) then
-                    -- Update command based on dropdown selection
                     button.middle_click_commands[cmdIndex].command = cmdBuffer[1]
                 end
                 imgui.SameLine()
@@ -851,6 +975,8 @@ local function job_change_cb()
 
         clicky.settings = load_job_settings(job_id)
         last_job_id = job_id
+        update_window_positions()
+        update_spells_and_abilities()
         update_window_positions()
     end
 end
