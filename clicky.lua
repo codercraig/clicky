@@ -11,7 +11,6 @@ local ffi = require('ffi')
 local timer = require("timer")
 local chat = require('chat')
 
-
 -- Define dark blue style
 local darkBluePfStyles = {
     {ImGuiCol_Text, {1.0, 1.0, 1.0, 1.0}}, -- White text
@@ -256,6 +255,8 @@ local function execute_commands(commands)
     local function execute_next_command()
         if index <= #commands then
             local command = commands[index]
+            -- Debug print the command before execution
+            print("Executing Command:", command.command)
 
             
             AshitaCore:GetChatManager():QueueCommand(1, command.command)
@@ -359,60 +360,15 @@ local target_map = {
     ["off"] = "off"
 }
 
-
-
 -- Initialize combined lists for spells and abilities
 local combined_spells = { "" }  -- Start with an empty string to prevent nil index errors
 local combined_abilities = { "" }  -- Same here
-
-local function update_spells_and_abilities()
-    -- Clear the existing lists
-    combined_spells = { "" }
-    combined_abilities = { "" }
-
-    local player = AshitaCore:GetMemoryManager():GetPlayer()
-    local job_id = player:GetMainJob()
-    local subjob_id = player:GetSubJob()
-
-    -- Populate combined_spells and combined_abilities based on job_id and subjob_id
-    if job_id == 3 then  -- WHM
-        if whm_spells and #whm_spells > 0 then
-            for _, spell in ipairs(whm_spells) do
-                table.insert(combined_spells, spell)
-            end
-        end
-        if whm_job_abilities and #whm_job_abilities > 0 then
-            for _, ability in ipairs(whm_job_abilities) do
-                table.insert(combined_abilities, ability)
-            end
-        end
-    end
-
-    if subjob_id == 4 then  -- BLM
-        if blm_spells and #blm_spells > 0 then
-            for _, spell in ipairs(blm_spells) do
-                table.insert(combined_spells, spell)
-            end
-        end
-        if blm_job_abilities and #blm_job_abilities > 0 then
-            for _, ability in ipairs(blm_job_abilities) do
-                table.insert(combined_abilities, ability)
-            end
-        end
-    end
-
-    -- Ensure that the combined lists are not nil
-    combined_spells = combined_spells or { "" }
-    combined_abilities = combined_abilities or { "" }
-end
-
--- Lets load in the spells/abilities/weaponskills
-local spells_abilities = require('spells_abilities')
 
 local function get_job_spells_and_abilities(job_id)
     local spells = {}
     local abilities = {}
     local pet_abilities = {}
+    
 
     if job_id == 3 then -- WHM
         spells = {
@@ -496,6 +452,54 @@ local function get_job_spells_and_abilities(job_id)
     return spells, abilities
 end
 
+local function update_spells_and_abilities()
+    -- Clear the existing lists
+    combined_spells = { "" }
+    combined_abilities = { "" }
+
+    local player = AshitaCore:GetMemoryManager():GetPlayer()
+    if not player then return end
+
+    local main_job_id = player:GetMainJob()
+    local sub_job_id = player:GetSubJob()
+
+    -- Get spells and abilities for main job
+    local main_spells, main_abilities = get_job_spells_and_abilities(main_job_id)
+
+    -- Add main job spells and abilities
+    if main_spells then
+        for _, spell in ipairs(main_spells) do
+            table.insert(combined_spells, spell)
+        end
+    end
+    if main_abilities then
+        for _, ability in ipairs(main_abilities) do
+            table.insert(combined_abilities, ability)
+        end
+    end
+
+    -- Get spells and abilities for sub job
+    local sub_spells, sub_abilities = get_job_spells_and_abilities(sub_job_id)
+
+    -- Add sub job spells and abilities
+    if sub_spells then
+        for _, spell in ipairs(sub_spells) do
+            table.insert(combined_spells, spell)
+        end
+    end
+    if sub_abilities then
+        for _, ability in ipairs(sub_abilities) do
+            table.insert(combined_abilities, ability)
+        end
+    end
+end
+
+
+local equipsets = {}
+for i = 1, 200 do
+    table.insert(equipsets, tostring(i))
+end
+
 -- Variables to store the selected options
 local selected_action_type = 1
 local selected_spell = 1
@@ -504,18 +508,73 @@ local selected_target = 1
 local spell_search_input = ""  -- For search box
 local search_input = { "" } -- Initialize the search input as a table with an empty string
 
-local function update_equipset_command(button, cmdIndex)
-    -- Ensure the necessary state tables are initialized
-    button.action_type_states = button.action_type_states or {}
-    button.equipset_states = button.equipset_states or {}
+local function update_command(button, is_right_click)
+    local commands = is_right_click and button.right_click_commands or button.commands
+    local action_type_states = is_right_click and button.right_click_action_type_states or button.action_type_states
+    local spell_states = is_right_click and button.right_click_spell_states or button.spell_states
+    local target_states = is_right_click and button.right_click_target_states or button.target_states
+    local equipset_states = is_right_click and button.right_click_equipset_states or button.equipset_states
 
-    -- If it's an Equipset command, update the command string with the current value
-    if action_types[button.action_type_states[cmdIndex]] == "Equipset" then
-        local equipset_number = button.equipset_states[cmdIndex] and button.equipset_states[cmdIndex][1]
-        if equipset_number then
-            button.commands[cmdIndex].command = string.format('/equipset %d', equipset_number)
+    for cmdIndex, _ in ipairs(commands) do
+        local action_type = action_types[action_type_states[cmdIndex]]
+        local command_string
+
+        if action_type == "Equipset" then
+            -- Handle Equipset commands
+            local equipset_number = equipset_states[cmdIndex] and equipset_states[cmdIndex][1]
+            if equipset_number then
+                command_string = string.format('/equipset %d', equipset_number)
+            else
+                print(string.format("Equipset number is not set or is invalid for command %d.", cmdIndex))
+            end
+        elseif action_type == "Magic" or action_type == "Alt Magic" then
+            -- Handle Magic commands
+            local spell_name = combined_spells[spell_states[cmdIndex]]
+            command_string = string.format('%s "%s" %s', action_type_map[action_type], spell_name or "", target_map[targets[target_states[cmdIndex]]])
+        elseif action_type == "Abilities" or action_type == "Alt Abilities" then
+            -- Handle Abilities commands
+            local ability_name = combined_abilities[spell_states[cmdIndex]]
+            command_string = string.format('%s "%s" %s', action_type_map[action_type], ability_name or "", target_map[targets[target_states[cmdIndex]]])
         else
-            print("Equipset number is not set or is invalid.")
+            -- For any other types, just use the basic command structure (this can be adjusted as needed)
+            command_string = string.format('%s "%s" %s', action_type_map[action_type], spell_states[cmdIndex] or "", target_map[targets[target_states[cmdIndex]]])
+        end
+
+        -- Update the command in the list
+        commands[cmdIndex].command = command_string
+    end
+end
+
+local function update_equipset_command(button, is_right_click)
+    if is_right_click then
+        button.right_click_action_type_states = button.right_click_action_type_states or {}
+        button.right_click_equipset_states = button.right_click_equipset_states or {}
+
+        for cmdIndex, _ in ipairs(button.right_click_commands) do
+            -- Ensure that the equipset command is formatted correctly
+            if action_types[button.right_click_action_type_states[cmdIndex]] == "Equipset" then
+                local equipset_number = button.right_click_equipset_states[cmdIndex] and button.right_click_equipset_states[cmdIndex][1]
+                if equipset_number then
+                    button.right_click_commands[cmdIndex].command = string.format('/equipset %d', equipset_number)
+                else
+                    print(string.format("Equipset number is not set or is invalid for right-click command %d.", cmdIndex))
+                end
+            end
+        end
+    else
+        button.action_type_states = button.action_type_states or {}
+        button.equipset_states = button.equipset_states or {}
+
+        for cmdIndex, _ in ipairs(button.commands) do
+            -- Ensure that the equipset command is formatted correctly
+            if action_types[button.action_type_states[cmdIndex]] == "Equipset" then
+                local equipset_number = button.equipset_states[cmdIndex] and button.equipset_states[cmdIndex][1]
+                if equipset_number then
+                    button.commands[cmdIndex].command = string.format('/equipset %d', equipset_number)
+                else
+                    print(string.format("Equipset number is not set or is invalid for command %d.", cmdIndex))
+                end
+            end
         end
     end
 end
@@ -537,6 +596,7 @@ local function render_edit_window()
         if not button.target_states then button.target_states = {} end
         if not button.search_inputs then button.search_inputs = {} end
         if not button.delays then button.delays = {} end
+        if not button.equipset_states then button.equipset_states = {} end
 
         -- Initialize right-click specific states
         if not button.right_click_action_type_states then button.right_click_action_type_states = {} end
@@ -544,30 +604,12 @@ local function render_edit_window()
         if not button.right_click_target_states then button.right_click_target_states = {} end
         if not button.right_click_search_inputs then button.right_click_search_inputs = {} end
         if not button.right_click_delays then button.right_click_delays = {} end
+        if not button.right_click_equipset_states then button.right_click_equipset_states = {} end
 
         -- Initialize middle-click specific states
         if not button.middle_click_commands then button.middle_click_commands = {} end
         if not button.middle_click_search_inputs then button.middle_click_search_inputs = {} end
         if not button.middle_click_delays then button.middle_click_delays = {} end
-
-        if not button.equipset_states then button.equipset_states = {} end
-
-        -- Get job IDs
-        local main_job_id = get_player_main_job()
-        local sub_job_id = AshitaCore:GetMemoryManager():GetPlayer():GetSubJob()
-
-        -- Get spells and abilities for main and sub job
-        local main_spells, main_abilities = get_job_spells_and_abilities(main_job_id)
-        local sub_spells, sub_abilities = get_job_spells_and_abilities(sub_job_id)
-
-        -- Combine the main and sub job spells/abilities
-        local combined_spells = {}
-        for _, spell in ipairs(main_spells) do table.insert(combined_spells, spell) end
-        for _, spell in ipairs(sub_spells) do table.insert(combined_spells, spell) end
-
-        local combined_abilities = {}
-        for _, ability in ipairs(main_abilities) do table.insert(combined_abilities, ability) end
-        for _, ability in ipairs(sub_abilities) do table.insert(combined_abilities, ability) end
 
         -- Initialize states based on existing commands
         for i = 1, #button.commands do
@@ -576,23 +618,7 @@ local function render_edit_window()
             button.target_states[i] = button.target_states[i] or selected_target
             button.search_inputs[i] = button.search_inputs[i] or { "" }
             button.delays[i] = button.delays[i] or { tostring(button.commands[i].delay or 0) }
-            -- Initialize equipset state as a string
             button.equipset_states[i] = button.equipset_states[i] or {0}
-        end
-
-        -- Initialize states for right-click commands
-        for i = 1, #button.right_click_commands do
-            button.right_click_action_type_states[i] = button.right_click_action_type_states[i] or selected_action_type
-            button.right_click_spell_states[i] = button.right_click_spell_states[i] or selected_spell
-            button.right_click_target_states[i] = button.right_click_target_states[i] or selected_target
-            button.right_click_search_inputs[i] = button.right_click_search_inputs[i] or { "" }
-            button.right_click_delays[i] = button.right_click_delays[i] or { tostring(button.right_click_commands[i].delay or 0) }
-        end
-
-        -- Initialize states for middle-click commands
-        for i = 1, #button.middle_click_commands do
-            button.middle_click_search_inputs[i] = button.middle_click_search_inputs[i] or { "" }
-            button.middle_click_delays[i] = button.middle_click_delays[i] or { tostring(button.middle_click_commands[i].delay or 0) }
         end
 
         PushStyles(darkBluePfStyles)
@@ -602,11 +628,7 @@ local function render_edit_window()
             if imgui.Button('Save', { 50, 25 }) then
                 button.name = seacom.name_buffer[1]
                 save_job_settings(clicky.settings, last_job_id)
-                
-                -- Exit edit mode
                 edit_mode = false
-                
-                -- Close the edit window
                 isEditWindowOpen = false
                 editing_button_index = nil
                 editing_window_id = nil
@@ -641,51 +663,55 @@ local function render_edit_window()
             -- Left Click Commands
             imgui.Text('Left Click:')
             for cmdIndex, cmdInfo in ipairs(button.commands) do
-                
-                -- Setup abilities and spells
                 local filtered_spells_or_abilities = {}
-                
-                -- Process the filtered spells or abilities as usual
                 local action_type = action_types[button.action_type_states[cmdIndex]]
-                local display_text = action_type
-
-                if action_type == "Equipset" then
-                    local equipset_number = button.equipset_states[cmdIndex][1] or ""
-                    display_text = string.format("%s %s", action_type, equipset_number)
-                end
-
+            
+                -- Populate the appropriate list based on action type
                 if action_type == "Magic" or action_type == "Alt Magic" then
                     for _, spell in ipairs(combined_spells) do
                         if button.search_inputs[cmdIndex][1] == "" or string.find(spell:lower(), button.search_inputs[cmdIndex][1]:lower()) then
                             table.insert(filtered_spells_or_abilities, spell)
                         end
                     end
-                elseif action_types[button.action_type_states[cmdIndex]] == "Abilities" then
+                elseif action_type == "Abilities" or action_type == "Alt Abilities" then
                     for _, ability in ipairs(combined_abilities) do
                         if button.search_inputs[cmdIndex][1] == "" or string.find(ability:lower(), button.search_inputs[cmdIndex][1]:lower()) then
                             table.insert(filtered_spells_or_abilities, ability)
                         end
                     end
+                elseif action_type == "Equipset" then
+                    for _, equipset in ipairs(equipsets) do
+                        table.insert(filtered_spells_or_abilities, equipset)
+                    end
+                end
+            
+                -- Determine the spell or ability name based on the selected index
+                local spell_or_ability_name = filtered_spells_or_abilities[button.spell_states[cmdIndex]]
+            
+                if action_type == "Equipset" then
+                    local equipset_number = button.equipset_states[cmdIndex] and button.equipset_states[cmdIndex][1]
+                    if equipset_number then
+                        button.commands[cmdIndex].command = string.format('/equipset %d', equipset_number)
+                    else
+                        print(string.format("Equipset number is not set or is invalid for command %d.", cmdIndex))
+                    end
+                else
+                    -- Construct the command string using the actual name for magic/abilities
+                    button.commands[cmdIndex].command = string.format('%s "%s" %s', action_type_map[action_type], spell_or_ability_name or "", target_map[targets[button.target_states[cmdIndex]]])
                 end
 
-                if #filtered_spells_or_abilities > 0 and (not button.spell_states[cmdIndex] or button.spell_states[cmdIndex] == 1) then
-                    -- Only update the command with the first item if nothing has been selected yet
-                    cmdInfo.spell = filtered_spells_or_abilities[1]
-                    cmdInfo.command = action_type_map[action_types[button.action_type_states[cmdIndex]]] .. " " .. cmdInfo.spell .. " " .. (cmdInfo.target or "")
-                end
-
-                -- Size of Target Dropdown
+                -- Dropdown to select Action Type
                 imgui.SetNextItemWidth(150)
-                
                 if imgui.BeginCombo("##ActionType"..cmdIndex, action_types[button.action_type_states[cmdIndex]] or "") then
                     for i = 1, #action_types do
                         local is_selected = (i == button.action_type_states[cmdIndex])
                         if imgui.Selectable(action_types[i], is_selected) then
                             button.action_type_states[cmdIndex] = i
-                            cmdInfo.spell = filtered_spells_or_abilities[i] or ""
-                            cmdInfo.target = cmdInfo.target or ""
-                            cmdInfo.command = action_type_map[action_types[button.action_type_states[cmdIndex]]] .. " " .. (cmdInfo.spell or "") .. " " .. (cmdInfo.target or "")
-                            
+                            if action_types[i] == "Equipset" then
+                                cmdInfo.command = string.format('/equipset %d', button.equipset_states[cmdIndex][1])
+                            else
+                                cmdInfo.command = action_type_map[action_types[i]] .. " " .. (cmdInfo.spell or "") .. " " .. (cmdInfo.target or "")
+                            end
                         end
                         if is_selected then
                             imgui.SetItemDefaultFocus()
@@ -694,60 +720,41 @@ local function render_edit_window()
                     imgui.EndCombo()
                 end
 
-                
-                local dropdown_label
-
-                if action_types[button.action_type_states[cmdIndex]] == "Equipset" then
-                    -- Set the dropdown label to display the equipset number
-                    dropdown_label = string.format("%d", button.equipset_states[cmdIndex][1])
+                -- Equipset Dropdown
+                if action_type == "Equipset" then
+                    imgui.SetNextItemWidth(150)
+                    imgui.SameLine()
+                    if imgui.BeginCombo("##EquipsetNumber"..cmdIndex, tostring(button.equipset_states[cmdIndex][1] or 0)) then
+                        for i = 1, #equipsets do
+                            local is_selected = (tostring(button.equipset_states[cmdIndex][1]) == equipsets[i])
+                            if imgui.Selectable(equipsets[i], is_selected) then
+                                button.equipset_states[cmdIndex] = {tonumber(equipsets[i])}
+                                cmdInfo.command = string.format('/equipset %d', button.equipset_states[cmdIndex][1])
+                            end
+                            if is_selected then
+                                imgui.SetItemDefaultFocus()
+                            end
+                        end
+                        imgui.EndCombo()
+                    end
                 else
-                    -- Otherwise, use the selected spell or ability
-                    dropdown_label = filtered_spells_or_abilities[button.spell_states[cmdIndex]] or ""
-                end
-                
-                imgui.SetNextItemWidth(150)
-                imgui.SameLine()
-                -- Spell/Ability Dropdown
-                if imgui.BeginCombo("##Spell"..cmdIndex, dropdown_label) then
-
-                    if action_types[button.action_type_states[cmdIndex]] == "Equipset" then
-                        -- If the selected action type is Equipset, show a number input instead of a search bar
-                        imgui.SetNextItemWidth(100)
-                        imgui.Text("Equipset Number:")
-                        imgui.SameLine()
-                    
-                        -- Create a number input for equipset number
-                        -- Now, use InputInt safely
-                        imgui.SetNextItemWidth(100)
-                        if imgui.InputInt("Equip Set"..cmdIndex, button.equipset_states[cmdIndex],1) then
-                            -- Update the command to use the equipset number
-                            cmdInfo.command = string.format('/equipset %d', button.equipset_states[cmdIndex][1])
+                    -- Spell/Ability Dropdown
+                    imgui.SetNextItemWidth(150)
+                    imgui.SameLine()
+                    if imgui.BeginCombo("##Spell"..cmdIndex, filtered_spells_or_abilities[button.spell_states[cmdIndex]] or "") then
+                        for i = 1, #filtered_spells_or_abilities do
+                            local is_selected = (i == button.spell_states[cmdIndex])
+                            if imgui.Selectable(filtered_spells_or_abilities[i], is_selected) then
+                                button.spell_states[cmdIndex] = i
+                                cmdInfo.spell = filtered_spells_or_abilities[i]
+                                cmdInfo.command = action_type_map[action_types[button.action_type_states[cmdIndex]]] .. " \"" .. cmdInfo.spell .. "\" " .. target_map[targets[button.target_states[cmdIndex]]]
+                            end
+                            if is_selected then
+                                imgui.SetItemDefaultFocus()
+                            end
                         end
-
-                    else
-                        -- InputTextWithHint for search, if not Equipset
-                        if imgui.InputTextWithHint("##SearchInCombo"..cmdIndex, "Search...", button.search_inputs[cmdIndex], 256) then
-                            -- The filtering happens automatically based on search input
-                        end
+                        imgui.EndCombo()
                     end
-
-                    for i = 1, #filtered_spells_or_abilities do
-                        local is_selected = (i == button.spell_states[cmdIndex])
-                        if imgui.Selectable(filtered_spells_or_abilities[i], is_selected) then
-                            -- Update the state to the selected index
-                            button.spell_states[cmdIndex] = i
-                            
-                            -- Set the selected spell
-                            cmdInfo.spell = filtered_spells_or_abilities[i]
-                            
-                            -- Update the command with the new spell
-                            cmdInfo.command = action_type_map[action_types[button.action_type_states[cmdIndex]]] .. " \"" .. cmdInfo.spell .. "\" " .. target_map[targets[button.target_states[cmdIndex]]]
-                        end
-                        if is_selected then
-                            imgui.SetItemDefaultFocus()
-                        end
-                    end
-                    imgui.EndCombo()
                 end
 
                 -- Target Dropdown
@@ -759,7 +766,7 @@ local function render_edit_window()
                         if imgui.Selectable(targets[i], is_selected) then
                             button.target_states[cmdIndex] = i
                             cmdInfo.target = target_map[targets[i]]
-                            cmdInfo.command = action_type_map[action_types[button.action_type_states[cmdIndex]]] .. " " .. (cmdInfo.spell or "") .. " " .. cmdInfo.target
+                            cmdInfo.command = action_type_map[action_types[button.action_type_states[cmdIndex]]] .. " " .. (cmdInfo.spell or 1) .. " " .. cmdInfo.target
                         end
                         if is_selected then
                             imgui.SetItemDefaultFocus()
@@ -767,10 +774,6 @@ local function render_edit_window()
                     end
                     imgui.EndCombo()
                 end
-
-                -- Compile the command from selected dropdowns
-                local compiled_command = string.format('%s "%s" %s', action_type_map[action_types[button.action_type_states[cmdIndex]]], cmdInfo.spell or "", target_map[targets[button.target_states[cmdIndex]]])
-                cmdInfo.command = compiled_command
 
                 -- Display delay input next to the command
                 imgui.SetNextItemWidth(50)
@@ -780,16 +783,17 @@ local function render_edit_window()
                 end
             end
 
-            -- Button to add a new command
+            -- Add and Remove Buttons
             imgui.NewLine()
             if imgui.Button('+Add', { 110, 40 }) then
                 imgui.NewLine()
                 table.insert(button.commands, { command = "", delay = 0 })
-                table.insert(button.action_type_states, selected_action_type)
+                table.insert(button.action_type_states, {""})
                 table.insert(button.spell_states, selected_spell)
                 table.insert(button.target_states, selected_target)
                 table.insert(button.search_inputs, { "" })
                 table.insert(button.delays, { "0" })
+                table.insert(button.equipset_states, {0})
             end
             imgui.SameLine()
             if imgui.Button('-Remove', { 110, 40 }) then
@@ -800,16 +804,34 @@ local function render_edit_window()
                     table.remove(button.target_states, #button.target_states)
                     table.remove(button.search_inputs, #button.search_inputs)
                     table.remove(button.delays, #button.delays)
+                    table.remove(button.equipset_states, #button.equipset_states)
                 end
             end
             imgui.SameLine()
-            if imgui.Button('Execute', { 110, 40 }) then
-
-                -- Normal mode: execute left-click commands 
+            if imgui.Button('Test Execute', { 110, 40 }) then
+                -- Reset and update button commands
                 for cmdIndex, cmdInfo in ipairs(button.commands) do
-                    update_equipset_command(button, cmdIndex)
+                    -- Check if the action type is Equipset and update the command accordingly
+                    update_command(button, false)
+            
+                    -- Regenerate the command string based on the current action type, spell, and target
+                    if action_types[button.action_type_states[cmdIndex]] == "Equipset" then
+                        local equipset_number = button.equipset_states[cmdIndex] and button.equipset_states[cmdIndex][1]
+                        if equipset_number then
+                            button.commands[cmdIndex].command = string.format('/equipset %d', equipset_number)
+                        else
+                            print(string.format("Equipset number is not set or is invalid for command %d.", cmdIndex))
+                        end
+                    else
+                        -- For other action types, regenerate the command string
+                        local action_type = action_types[button.action_type_states[cmdIndex]]
+                        local spell = button.spell_states[cmdIndex] or ""
+                        local target = button.target_states[cmdIndex] or ""
+                        button.commands[cmdIndex].command = string.format('%s "%s" %s', action_type_map[action_type], spell, target)
+                    end
                 end
-
+            
+                -- Execute the updated commands
                 execute_commands(button.commands)
             end
 
@@ -818,10 +840,19 @@ local function render_edit_window()
 
             -- Right Click Commands Section
             imgui.Separator()
-            imgui.Text('Right Click Commands:')
+            imgui.Text('Right Click:')
             for cmdIndex, cmdInfo in ipairs(button.right_click_commands) do
                 -- Code similar to the left-click commands, but using the right-click state variables
                 local filtered_spells_or_abilities = {}
+
+                -- Process the filtered spells or abilities as usual
+                local action_type = action_types[button.right_click_action_type_states[cmdIndex]]
+                local display_text = action_type
+
+                if action_type == "Equipset" then
+                    local equipset_number = button.right_click_equipset_states[cmdIndex][1] or ""
+                    display_text = string.format("%s %s", action_type, equipset_number)
+                end
 
                 -- Filter spells or abilities based on search input
                 local action_type = action_types[button.right_click_action_type_states[cmdIndex]]
@@ -857,11 +888,18 @@ local function render_edit_window()
                     imgui.EndCombo()
                 end
 
+                local dropdown_label
+
+                if action_types[button.right_click_action_type_states[cmdIndex]] == "Equipset" then
+                    -- Set the dropdown label to display the equipset number
+                    dropdown_label = string.format("%d", button.right_click_equipset_states[cmdIndex][1])
+                else
+                    -- Otherwise, use the selected spell or ability
+                    dropdown_label = filtered_spells_or_abilities[button.spell_states[cmdIndex]] or ""
+                end
+
                 imgui.SameLine()
                 imgui.SetNextItemWidth(100)
-                -- if imgui.InputTextWithHint("##RightClickSearchSpell"..cmdIndex, "Search...", button.right_click_search_inputs[cmdIndex], 256) then
-                --     button.right_click_search_inputs[cmdIndex][1] = button.right_click_search_inputs[cmdIndex][1]
-                -- end
 
                 if action_types[button.right_click_action_type_states[cmdIndex]] == "Magic" then
                     for _, spell in ipairs(combined_spells) do
@@ -879,10 +917,10 @@ local function render_edit_window()
 
                 imgui.SameLine()
                 imgui.SetNextItemWidth(150)
-                if imgui.BeginCombo("##RightClickSpell"..cmdIndex, filtered_spells_or_abilities[button.right_click_spell_states[cmdIndex]] or "") then
+                if imgui.BeginCombo("##RightClickSpell"..cmdIndex,dropdown_label) then
                     
 
-                    if action_types[button.action_type_states[cmdIndex]] == "Equipset" then
+                    if action_types[button.right_click_action_type_states[cmdIndex]] == "Equipset" then
                         -- If the selected action type is Equipset, show a number input instead of a search bar
                         imgui.SetNextItemWidth(100)
                         imgui.Text("Equipset Number:")
@@ -891,9 +929,9 @@ local function render_edit_window()
                         -- Create a number input for equipset number
                         -- Now, use InputInt safely
                         imgui.SetNextItemWidth(100)
-                        if imgui.InputInt("Equip Set"..cmdIndex, button.equipset_states[cmdIndex],1) then
+                        if imgui.InputInt("Equip Set"..cmdIndex, button.right_click_equipset_states[cmdIndex],1) then
                             -- Update the command to use the equipset number
-                            cmdInfo.command = string.format('/equipset %d', button.equipset_states[cmdIndex][1])
+                            cmdInfo.command = string.format('/equipset %d', button.right_click_equipset_states[cmdIndex][1])
                         end
 
                     else
@@ -970,8 +1008,8 @@ local function render_edit_window()
             if imgui.Button('Execute ', { 110, 40 }) then
 
                 -- Update equipset when testing commands.
-                for cmdIndex, cmdInfo in ipairs(button.commands) do
-                    update_equipset_command(button, cmdIndex)
+                for cmdIndex, cmdInfo in ipairs(button.right_click_commands) do
+                    update_command(button,true)
                 end
 
                 execute_commands(button.right_click_commands)
@@ -1107,8 +1145,6 @@ local function render_edit_window()
 end
 
 
-
-
 -- Add a new window
 local function add_new_window()
     local new_id = #clicky.settings.windows + 1
@@ -1208,13 +1244,17 @@ local function render_buttons_window(window)
                 else
                     --Normal mode: execute left-click commands 
                     for cmdIndex, cmdInfo in ipairs(button.commands) do
-                        update_equipset_command(button, cmdIndex)
+                        update_command(button,false)
                     end
 
                     execute_commands(button.commands)
                 end
             elseif imgui.IsItemClicked(1) and not edit_mode then
                 -- Normal mode: execute right-click commands
+                for cmdIndex, cmdInfo in ipairs(button.commands) do
+                    update_command(button, cmdIndex,true)
+                end
+
                 execute_commands(button.right_click_commands)
             elseif imgui.IsItemClicked(2) and not edit_mode then
                 -- Normal mode: execute middle-click commands
@@ -1254,7 +1294,12 @@ local function render_buttons_window(window)
     PopStyles(darkBluePfStyles)
 end
 
-
+local function execute_button_commands(button)
+    for cmdIndex, cmdInfo in ipairs(button.commands) do
+        update_equipset_command(button, cmdIndex, false)
+    end
+    execute_commands(button.commands)
+end
 
 local function update_window_positions()
     for _, window in ipairs(clicky.settings.windows) do
@@ -1299,8 +1344,8 @@ ashita.events.register('d3d_present', 'present_cb', function()
         for _, window in ipairs(clicky.settings.windows) do
             render_buttons_window(window)
         end
-        render_edit_window()
         render_info_window()
+        render_edit_window()
     end
 end)
 
