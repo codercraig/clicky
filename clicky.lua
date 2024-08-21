@@ -157,9 +157,14 @@ end
 local function save_job_settings(settings_table, job)
     if not edit_mode then return end
 
+    if job == nil then
+        print('Error: job ID is nil in save_job_settings')
+        return
+    end
+
     local job_name = jobIconMapping[job]
     if not job_name then
-        print(string.format('Invalid job ID: %d', job))
+        print(string.format('Invalid job ID: %s', tostring(job)))
         return
     end
 
@@ -173,6 +178,7 @@ local function save_job_settings(settings_table, job)
         print(string.format('Saved settings for job: %s (%d)', job_name, job))
     end
 end
+
 
 -- Load job settings
 local function load_job_settings(job)
@@ -465,32 +471,37 @@ local function update_spells_and_abilities()
 
     -- Get spells and abilities for main job
     local main_spells, main_abilities = get_job_spells_and_abilities(main_job_id)
-
-    -- Add main job spells and abilities
-    if main_spells then
-        for _, spell in ipairs(main_spells) do
-            table.insert(combined_spells, spell)
-        end
-    end
-    if main_abilities then
-        for _, ability in ipairs(main_abilities) do
-            table.insert(combined_abilities, ability)
-        end
-    end
-
     -- Get spells and abilities for sub job
     local sub_spells, sub_abilities = get_job_spells_and_abilities(sub_job_id)
 
-    -- Add sub job spells and abilities
-    if sub_spells then
-        for _, spell in ipairs(sub_spells) do
-            table.insert(combined_spells, spell)
+    -- Helper function to merge lists without duplication
+    local function merge_unique(destination, source)
+        local seen = {}
+        for _, value in ipairs(destination) do
+            seen[value] = true
+        end
+        for _, value in ipairs(source) do
+            if not seen[value] then
+                table.insert(destination, value)
+                seen[value] = true
+            end
         end
     end
+
+    -- Merge main job spells and abilities
+    if main_spells then
+        merge_unique(combined_spells, main_spells)
+    end
+    if main_abilities then
+        merge_unique(combined_abilities, main_abilities)
+    end
+
+    -- Merge sub job spells and abilities
+    if sub_spells then
+        merge_unique(combined_spells, sub_spells)
+    end
     if sub_abilities then
-        for _, ability in ipairs(sub_abilities) do
-            table.insert(combined_abilities, ability)
-        end
+        merge_unique(combined_abilities, sub_abilities)
     end
 end
 
@@ -1250,6 +1261,9 @@ local function update_window_positions()
     end
 end
 
+local last_main_job_id = nil  -- Track the last main job ID
+local last_sub_job_id = nil   -- Track the last subjob ID
+
 local function job_change_cb()
     local player = AshitaCore:GetMemoryManager():GetPlayer()
     if not player then
@@ -1257,20 +1271,31 @@ local function job_change_cb()
         return
     end
 
-    local job_id = player:GetMainJob()
-    if job_id ~= last_job_id then
+    local main_job_id = player:GetMainJob()
+    local sub_job_id = player:GetSubJob()
+
+    -- Check if the main job has changed
+    if main_job_id ~= last_job_id then
         if last_job_id then
             save_job_settings(clicky.settings, last_job_id)
         end
-
-        clicky.settings = load_job_settings(job_id)
-        last_job_id = job_id
+        -- Update spells and abilities
+        clicky.settings = load_job_settings(main_job_id)
+        last_job_id = main_job_id
         update_window_positions()
-        update_spells_and_abilities()
-        update_window_positions()
+        --update_spells_and_abilities()
     end
-end
+    -- Check if either the main job or subjob has changed
+    if main_job_id ~= last_job_id or sub_job_id ~= last_sub_job_id then
+        -- Update the last known subjob ID
+        last_sub_job_id = sub_job_id
+        last_job_id = main_job_id
 
+        -- Update spells and abilities
+        update_spells_and_abilities()
+    end
+
+end
 -- Initialize last time for delta time calculation
 local last_time = os.clock()
 
