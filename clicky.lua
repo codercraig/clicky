@@ -340,12 +340,13 @@ local action_type_map = {
 }
 
 -- Define the target options
-local targets = {"", "Self", "Target","Party#0", "Party#1", "Party#2", "Party#3", "Party#4", "Party#5","AltTarget","AltParty#0","AltParty#1","AltParty#2","AltParty#3","AltParty#4","AltParty#5","Sub Target (Party)", "Sub Target (Party Target)", "Alliance", "on", "off" }
+local targets = {"", "Self", "Target","Select Target","Party#0", "Party#1", "Party#2", "Party#3", "Party#4", "Party#5","AltTarget","AltParty#0","AltParty#1","AltParty#2","AltParty#3","AltParty#4","AltParty#5","Sub Target (Party)", "Sub Target (Party Target)", "Alliance", "on", "off" }
 
 local target_map = {
     [""] = "",
     ["Self"] = "<me>",
     ["Target"] = "<t>",
+    ["Select Target"] = "<st>",
     ["Party#0"] = "<p0>",
     ["Party#1"] = "<p1>",
     ["Party#2"] = "<p2>",
@@ -373,8 +374,7 @@ local combined_abilities = { "" }  -- Same here
 local function get_job_spells_and_abilities(job_id)
     local spells = {}
     local abilities = {}
-    local pet_abilities = {}
-    
+    local weaponskills = {}
 
     if job_id == 3 then -- WHM
         spells = {
@@ -402,17 +402,21 @@ local function get_job_spells_and_abilities(job_id)
             "Devotion",
             "Martyr",
         }
+
+        weaponskills = {
+            "",  -- Include any relevant WS for WHM here
+        }
+
     elseif job_id == 4 then -- BLM
         spells = {
-            -- Include Black Mage spells up to level 75 here
-            "","Stone", "Water", "Aero", "Fire", "Blizzard", "Thunder", "Stone II", "Water II",
+            "","Stone","Stone", "Water", "Aero", "Fire", "Blizzard", "Thunder", "Stone II", "Water II",
             "Aero II", "Fire II", "Blizzard II", "Thunder II", "Stone III", "Water III", "Aero III",
-            "Fire III", "Blizzard III", "Thunder III","Blizzard IV","Thunder IV","Fire IV","Water IV",
-            "Stonega", "Waterga", "Aeroga", "Firaga",
-            "Blizzaga", "Thundaga", "Stonega II", "Waterga II", "Aeroga II", "Firaga II",
-            "Blizzaga II", "Thundaga II", "Poison", "Poison II", "Poisonga", "Bio", "Bio II",
-            "Drain", "Aspir", "Warp", "Warp II", "Escape", "Tractor", "Sleep", "Sleep II",
-            "Bind", "Break", "Dispel", "Stun",
+            "Fire III", "Blizzard III", "Thunder III", "Blizzard IV","Thunder IV","Fire IV","Water IV",
+            "Stonega", "Waterga", "Aeroga", "Firaga", "Blizzaga", "Thundaga", "Stonega II", "Waterga II",
+            "Aeroga II", "Firaga II", "Blizzaga II", "Thundaga II", "Poison", "Poison II", "Poisonga", 
+            "Bio", "Bio II", "Drain", "Aspir", "Warp", "Warp II", "Escape", "Tractor", "Sleep", "Sleep II",
+            "Bind", "Dispel", "Stun","Freeze", "Freeze II", "Burst", "Burst II", "Flare", "Flare II", "Tornado",
+            "Tornado II", "Flood", "Flood II",
         }
 
         abilities = {
@@ -421,19 +425,19 @@ local function get_job_spells_and_abilities(job_id)
             "Elemental Seal",
             "Tranquil Heart",
         }
+
+        weaponskills = {
+            "",  -- Include any relevant WS for BLM here
+        }
+
     elseif job_id == 15 then -- SMN (Summoner)
         spells = {
-            -- Elemental Spirits
-            "","Fire Spirit", "Ice Spirit", "Air Spirit", "Earth Spirit",
-            "Thunder Spirit", "Water Spirit", "Light Spirit", "Dark Spirit",
-
-            -- Summons
-            "Carbuncle", "Ifrit", "Shiva", "Garuda",
-            "Titan", "Ramuh", "Leviathan", "Fenrir", "Diabolos"
+            "","Fire Spirit", "Ice Spirit", "Air Spirit", "Earth Spirit", "Thunder Spirit", "Water Spirit",
+            "Light Spirit", "Dark Spirit", "Carbuncle", "Ifrit", "Shiva", "Garuda", "Titan", "Ramuh", 
+            "Leviathan", "Fenrir", "Diabolos"
         }
 
         abilities = {
-            -- Summoner Abilities
             "",
             "Assault",
             "Release",
@@ -443,25 +447,107 @@ local function get_job_spells_and_abilities(job_id)
             "Elemental Siphon",
             "Apogee",
             -- Level 65 Pet Abilities
-            "Eclipse Bite",        -- Fenrir
-            "Nether Blast",        -- Diabolos
+            "Eclipse Bite",  -- Fenrir
+            "Nether Blast",  -- Diabolos
             -- Level 70 Pet Abilities
-            "Flaming Crush",       -- Ifrit
-            "Mountain Buster",     -- Titan
-            "Spinning Dive",       -- Leviathan
-            "Predator Claws",      -- Garuda
-            "Rush",                -- Shiva
-            "Chaotic Strike"       -- Ramuh
+            "Flaming Crush",  -- Ifrit
+            "Mountain Buster", -- Titan
+            "Spinning Dive",  -- Leviathan
+            "Predator Claws",  -- Garuda
+            "Rush",           -- Shiva
+            "Chaotic Strike"  -- Ramuh
+        }
+
+        weaponskills = {
+            "",  -- Empty string to prevent nil index errors
+            "Shining Strike",  -- Club
+            "Seraph Strike",   -- Club
+            "Earth Crusher",   -- Staff
+            "Starburst",       -- Staff
+            "Sunburst",        -- Staff
+            "Full Swing",      -- Staff
+            "Spirit Taker",    -- Staff
+            "Retribution",     -- Staff
+            "Gate of Tartarus", -- Staff (Mythic Weapon)
         }
     end
 
-    return spells, abilities
+    return spells, abilities, weaponskills
+end
+
+
+-- Function to retrieve spells available for a given job
+local function get_job_spells(job_id)
+    local job_spells, _, _ = get_job_spells_and_abilities(job_id)
+    local spell_dict = {}
+    for _, spell_name in ipairs(job_spells) do
+        spell_dict[spell_name] = true
+    end
+    return spell_dict
+end
+
+local function fetch_available_spells_with_jobs()
+    local player = AshitaCore:GetMemoryManager():GetPlayer()
+    local main_job_spells = {}
+    local sub_job_spells = {}
+
+    if not player then
+        print("Error: Unable to access player memory manager.")
+        return {}
+    end
+
+    -- Get player's main job and sub job
+    local main_job_id = player:GetMainJob()
+    local sub_job_id = player:GetSubJob()
+
+    -- Retrieve the spells associated with the main job and sub job
+    local main_job_spell_dict = get_job_spells(main_job_id)
+    local sub_job_spell_dict = get_job_spells(sub_job_id)
+
+    -- Iterate through all possible spell IDs
+    for spellId = 1, 1024 do
+        -- Get the spell resource by ID
+        local spell = AshitaCore:GetResourceManager():GetSpellById(spellId)
+
+        if spell and spell.Name then
+            local spell_name = spell.Name[1]
+
+            -- Check if the player knows the spell and if it's a main job spell
+            if player:HasSpell(spell.Index) then
+                if main_job_spell_dict[spell_name] then
+                    table.insert(main_job_spells, spell_name)
+                elseif sub_job_spell_dict[spell_name] then
+                    table.insert(sub_job_spells, spell_name)
+                end
+            end
+        end
+    end
+
+    -- Combine main job spells first, then subjob spells
+    local combined_spells = {}
+    local seen_spells = {}
+
+    for _, spell_name in ipairs(main_job_spells) do
+        if not seen_spells[spell_name] then
+            table.insert(combined_spells, spell_name)
+            seen_spells[spell_name] = true
+        end
+    end
+
+    for _, spell_name in ipairs(sub_job_spells) do
+        if not seen_spells[spell_name] then
+            table.insert(combined_spells, spell_name)
+            seen_spells[spell_name] = true
+        end
+    end
+
+    -- Return the ordered and deduplicated list of spells
+    return combined_spells
 end
 
 local function update_spells_and_abilities()
     -- Clear the existing lists
-    combined_spells = { "" }
-    combined_abilities = { "" }
+    combined_spells = { "" }  -- Start with an empty string to prevent nil index errors
 
     local player = AshitaCore:GetMemoryManager():GetPlayer()
     if not player then return end
@@ -469,41 +555,17 @@ local function update_spells_and_abilities()
     local main_job_id = player:GetMainJob()
     local sub_job_id = player:GetSubJob()
 
-    -- Get spells and abilities for main job
-    local main_spells, main_abilities = get_job_spells_and_abilities(main_job_id)
-    -- Get spells and abilities for sub job
-    local sub_spells, sub_abilities = get_job_spells_and_abilities(sub_job_id)
+    -- Get dynamically fetched spells for the player based on job and subjob
+    local available_spells = fetch_available_spells_with_jobs()
 
-    -- Helper function to merge lists without duplication
-    local function merge_unique(destination, source)
-        local seen = {}
-        for _, value in ipairs(destination) do
-            seen[value] = true
+    -- Merge dynamically fetched spells into the combined_spells list
+    if available_spells then
+        for _, spell in ipairs(available_spells) do
+            table.insert(combined_spells, spell)
         end
-        for _, value in ipairs(source) do
-            if not seen[value] then
-                table.insert(destination, value)
-                seen[value] = true
-            end
-        end
-    end
-
-    -- Merge main job spells and abilities
-    if main_spells then
-        merge_unique(combined_spells, main_spells)
-    end
-    if main_abilities then
-        merge_unique(combined_abilities, main_abilities)
-    end
-
-    -- Merge sub job spells and abilities
-    if sub_spells then
-        merge_unique(combined_spells, sub_spells)
-    end
-    if sub_abilities then
-        merge_unique(combined_abilities, sub_abilities)
     end
 end
+
 
 
 local equipsets = {}
@@ -753,11 +815,11 @@ local function render_edit_window()
                     imgui.SetNextItemWidth(150)
                     imgui.SameLine()
                     if imgui.BeginCombo("##Spell"..cmdIndex, filtered_spells_or_abilities[button.spell_states[cmdIndex]] or "") then
-                        for i = 1, #filtered_spells_or_abilities do
+                        for i = 1, #combined_spells do
                             local is_selected = (i == button.spell_states[cmdIndex])
-                            if imgui.Selectable(filtered_spells_or_abilities[i], is_selected) then
+                            if imgui.Selectable(combined_spells[i], is_selected) then
                                 button.spell_states[cmdIndex] = i
-                                cmdInfo.spell = filtered_spells_or_abilities[i]
+                                cmdInfo.spell = combined_spells[i]
                                 cmdInfo.command = action_type_map[action_types[button.action_type_states[cmdIndex]]] .. " \"" .. cmdInfo.spell .. "\" " .. target_map[targets[button.target_states[cmdIndex]]]
                             end
                             if is_selected then
@@ -1283,7 +1345,7 @@ local function job_change_cb()
         clicky.settings = load_job_settings(main_job_id)
         last_job_id = main_job_id
         update_window_positions()
-        --update_spells_and_abilities()
+        update_spells_and_abilities()
     end
     -- Check if either the main job or subjob has changed
     if main_job_id ~= last_job_id or sub_job_id ~= last_sub_job_id then
