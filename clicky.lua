@@ -622,10 +622,37 @@ local function get_job_spells_and_abilities(job_id)
     elseif job_id == 18 then -- PUP (Puppetmaster)
         spells = {}  -- Puppetmasters do not have spells
         abilities = {
-            "", "Overdrive", "Activate", "Repair", "Deus Ex Automata", "Deploy", "Retrieve", "Maintenance"
+            "", 
+            "Overdrive", 
+            "Activate", 
+            "Deactivate", 
+            "Repair", 
+            "Deus Ex Automata", 
+            "Deploy", 
+            "Retrieve", 
+            "Maintenance", 
+            "Ventriloquy", 
+            "Role Reversal",
+            "",
+            -- Adding Puppetmaster Maneuvers
+            "Fire Maneuver", 
+            "Ice Maneuver", 
+            "Wind Maneuver", 
+            "Earth Maneuver", 
+            "Thunder Maneuver", 
+            "Water Maneuver", 
+            "Light Maneuver", 
+            "Dark Maneuver"
         }
         weaponskills = {
-            "", "Stringing Pummel", "Victory Smite", "String Shredder"
+            "",
+            "Combo",
+            "Shoulder Tackle",
+            "Stringing Pummel",
+            "Victory Smite",
+            "String Shredder",
+            "Shijin Spiral",
+            "Asuran Fists"
         }
 
     elseif job_id == 19 then -- DNC (Dancer)
@@ -668,7 +695,7 @@ local function get_job_spells_and_abilities(job_id)
             "Lux", "Tenebrae", "Vallation", "Valiance", "Liement", "Gambit", "Rayke"
         }
         abilities = {
-            "", "One for All", "Battuta", "Elemental Sforzo", "Sleight of Sword"
+            "", "One for All", "Battuta", "Elemental Sforzo", "Sleight of Sword", "Swordplay"
         }
         weaponskills = {
             "", "Resolution", "Dimidiation", "Requiescat"
@@ -834,6 +861,9 @@ local selected_target = 1
 local spell_search_input = ""  -- For search box
 local search_input = { "" } -- Initialize the search input as a table with an empty string
 
+-- Check the data has been updated properly based on players main/subjob
+local update_triggered = false
+
 local function update_command(button, is_right_click)
     -- Ensure the states are initialized
     if not button.action_type_states then button.action_type_states = {} end
@@ -873,14 +903,37 @@ local function update_command(button, is_right_click)
         elseif action_type == "Magic" or action_type == "Alt Magic" then
             -- Handle Magic commands
             local spell_name = combined_spells[spell_states[cmdIndex]]
+            if not spell_name or spell_name == "" then
+                -- If the spell field is empty, trigger the update once to check that its meant to be empty.. 
+                -- This could be caused by r0 or crashes, just a sanity check so player doesnt panic.
+                if not update_triggered then
+                    update_spells_and_abilities()
+                    update_triggered = true
+                end
+            end
+
             command_string = spell_name and string.format('%s "%s" %s', action_type_map[action_type], spell_name or "", target_map[targets[target_states[cmdIndex]]])
         elseif action_type == "Abilities" or action_type == "Alt Abilities" then
             -- Handle Abilities commands
             local ability_name = combined_abilities[spell_states[cmdIndex]]
+            if not ability_name or ability_name == "" then
+                -- If the ability field is empty, trigger the update once
+                if not update_triggered then
+                    update_spells_and_abilities()
+                    update_triggered = true
+                end
+            end
             command_string = ability_name and string.format('%s "%s" %s', action_type_map[action_type], ability_name or "", target_map[targets[target_states[cmdIndex]]])
         elseif action_type == "Weapon Skills" or action_type == "Alt Weapon Skills" then
             -- Handle Weapon Skills commands
             local weaponskill_name = combined_weaponskills[spell_states[cmdIndex]]
+            if not weaponskill_name or weaponskill_name == "" then
+                -- If the weaponskill field is empty, trigger the update once
+                if not update_triggered then
+                    update_spells_and_abilities()
+                    update_triggered = true
+                end
+            end
             command_string = weaponskill_name and string.format('%s "%s" %s', action_type_map[action_type], weaponskill_name or "", target_map[targets[target_states[cmdIndex]]])
         else
             -- For any other types, just use the basic command structure (this can be adjusted as needed)
@@ -913,7 +966,7 @@ local function render_edit_window()
         if not button.target_states then button.target_states = {} end
         if not button.search_inputs then button.search_inputs = {} end
         if not button.delays then button.delays = {} end
-        if not button.equipset_states then button.equipset_states = {} end
+        if not button.equipset_states then button.equipset_states = {0} end
 
         -- Initialize right-click specific states
         if not button.right_click_action_type_states then button.right_click_action_type_states = {} end
@@ -921,7 +974,7 @@ local function render_edit_window()
         if not button.right_click_target_states then button.right_click_target_states = {} end
         if not button.right_click_search_inputs then button.right_click_search_inputs = {} end
         if not button.right_click_delays then button.right_click_delays = {} end
-        if not button.right_click_equipset_states then button.right_click_equipset_states = {} end
+        if not button.right_click_equipset_states then button.right_click_equipset_states = {0} end
 
         -- Initialize middle-click specific states
         if not button.middle_click_commands then button.middle_click_commands = {} end
@@ -929,6 +982,7 @@ local function render_edit_window()
         if not button.middle_click_delays then button.middle_click_delays = {} end
 
         -- Initialize states based on existing commands
+        -- Loop over each command to ensure all relevant states are initialized for main (left-click) commands
         for i = 1, #button.commands do
             button.action_type_states[i] = button.action_type_states[i] or selected_action_type
             button.spell_states[i] = button.spell_states[i] or selected_spell
@@ -936,6 +990,22 @@ local function render_edit_window()
             button.search_inputs[i] = button.search_inputs[i] or { "" }
             button.delays[i] = button.delays[i] or { tostring(button.commands[i].delay or 0) }
             button.equipset_states[i] = button.equipset_states[i] or {0}
+        end
+
+        -- Loop over each command to ensure all relevant states are initialized for right-click commands
+        for i = 1, #button.right_click_commands do
+            button.right_click_action_type_states[i] = button.right_click_action_type_states[i] or selected_action_type
+            button.right_click_spell_states[i] = button.right_click_spell_states[i] or selected_spell
+            button.right_click_target_states[i] = button.right_click_target_states[i] or selected_target
+            button.right_click_search_inputs[i] = button.right_click_search_inputs[i] or { "" }
+            button.right_click_delays[i] = button.right_click_delays[i] or { tostring(button.right_click_commands[i].delay or 0) }
+            button.right_click_equipset_states[i] = button.right_click_equipset_states[i] or {0}
+        end
+
+        -- Loop over each command to ensure all relevant states are initialized for middle-click commands
+        for i = 1, #button.middle_click_commands do
+            button.middle_click_search_inputs[i] = button.middle_click_search_inputs[i] or { "" }
+            button.middle_click_delays[i] = button.middle_click_delays[i] or { tostring(button.middle_click_commands[i].delay or 0) }
         end
 
         PushStyles(darkBluePfStyles)
@@ -1183,6 +1253,12 @@ local function render_edit_window()
                 -- Determine the spell or ability name based on the selected index
                 local spell_or_ability_name = filtered_spells_or_abilities[button.right_click_spell_states[cmdIndex]]
 
+                -- Ensure the right_click_equipset_states is initialized before accessing
+                if not button.right_click_equipset_states[cmdIndex] then
+                    button.right_click_equipset_states[cmdIndex] = {0}  -- or any default value you expect
+                end
+
+
                  -- Dropdown to select Action Type
                 imgui.SetNextItemWidth(150)
                 if imgui.BeginCombo("##RightClickActionType"..cmdIndex, action_types[button.right_click_action_type_states[cmdIndex]] or "") then
@@ -1224,7 +1300,6 @@ local function render_edit_window()
                     end
                 elseif action_type == "Attack" or action_type == "Alt Attack" or action_type == "Ranged" then
                         -- Do not show spell/ability dropdown for Attack
-                
                 else
                     -- Spell/Ability Dropdown
                     imgui.SetNextItemWidth(150)
@@ -1590,6 +1665,7 @@ end
 
 local last_main_job_id = nil  -- Track the last main job ID
 local last_sub_job_id = nil   -- Track the last subjob ID
+local job_zero_handled = false
 
 local function job_change_cb()
     local player = AshitaCore:GetMemoryManager():GetPlayer()
@@ -1600,6 +1676,18 @@ local function job_change_cb()
 
     local main_job_id = player:GetMainJob()
     local sub_job_id = player:GetSubJob()
+
+    -- If job ID is 0, do nothing and retain the current settings
+    if main_job_id == 0 then
+        if not job_zero_handled then
+            print("Job ID is 0, retaining previous settings.")
+            job_zero_handled = true  -- Set the flag to true after handling the first time
+        end
+        return
+    end
+
+    -- Reset the flag when a valid job ID is detected
+    job_zero_handled = false
 
     -- Check if the main job has changed
     if main_job_id ~= last_job_id then
@@ -1621,7 +1709,6 @@ local function job_change_cb()
         -- Update spells and abilities
         update_spells_and_abilities()
     end
-
 end
 
 local function onload()
@@ -1634,6 +1721,18 @@ local function onload()
     local main_job_id = player:GetMainJob()
     local sub_job_id = player:GetSubJob()
 
+    -- If job ID is 0, do nothing and retain the current settings
+    if main_job_id == 0 then
+        if not job_zero_handled then
+            print("Job ID is 0 during load, retaining default or previous settings.")
+            job_zero_handled = true  -- Set the flag to true after handling the first time
+        end
+        return
+    end
+
+    -- Reset the flag when a valid job ID is detected
+    job_zero_handled = false
+
     -- Load the settings for the current main job
     clicky.settings = load_job_settings(main_job_id)
     
@@ -1645,7 +1744,6 @@ local function onload()
     -- Update spells and abilities
     update_spells_and_abilities()
 end
-
 
 -- Initialize last time for delta time calculation
 local last_time = os.clock()
