@@ -573,7 +573,7 @@ local function get_job_spells_and_abilities(job_id)
             "", "Meikyo Shisui", "Third Eye", "Meditate", "Seigan", "Hasso", "Sekkanoki", "Konzen-ittai"
         }
         weaponskills = {
-            "", "Tachi: Gekko", "Tachi: Kasha", "Tachi: Kagero", "Tachi: Enpi", "Tachi: Yukikaze"
+            "", "Tachi: Gekko", "Tachi: Kasha", "Tachi: Kagero", "Tachi: Enpi", "Tachi: Yukikaze", "Tachi: Shoha"
         }
 
     elseif job_id == 13 then -- NIN (Ninja)
