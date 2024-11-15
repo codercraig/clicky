@@ -431,15 +431,38 @@ local function get_job_spells_and_abilities(job_id)
 
     elseif job_id == 4 then -- BLM (Black Mage)
         spells = {
-            "", "Stone", "Stone II", "Stone III", "Stone IV", "Stone V", 
-            "Water", "Water II", "Water III", "Water IV", "Water V", 
-            "Aero", "Aero II", "Aero III", "Aero IV", "Aero V", 
-            "Fire", "Fire II", "Fire III", "Fire IV", "Fire V", 
-            "Blizzard", "Blizzard II", "Blizzard III", "Blizzard IV", "Blizzard V", 
-            "Thunder", "Thunder II", "Thunder III", "Thunder IV", "Thunder V", 
-            "Sleep", "Sleep II", "Break", "Stun","Freeze", "Flare", "Burst", "Flood", "Tornado", 
-            "Comet", "Meteor","Freeze II", "Flare II", "Burst II", "Flood II", "Tornado II"
+            "", 
+            -- Earth Spells
+            "Stone", "Stone II", "Stone III", "Stone IV", "Stone V", "Stone VI",
+            -- Water Spells
+            "Water", "Water II", "Water III", "Water IV", "Water V", "Water VI",
+            -- Wind Spells
+            "Aero", "Aero II", "Aero III", "Aero IV", "Aero V", "Aero VI",
+            -- Fire Spells
+            "Fire", "Fire II", "Fire III", "Fire IV", "Fire V", "Fire VI",
+            -- Ice Spells
+            "Blizzard", "Blizzard II", "Blizzard III", "Blizzard IV", "Blizzard V", "Blizzard VI",
+            -- Lightning Spells
+            "Thunder", "Thunder II", "Thunder III", "Thunder IV", "Thunder V", "Thunder VI",
+            -- Area-of-Effect (AoE) Spells
+            "Stonega", "Stonega II", "Stonega III", "Stoneja",
+            "Waterga", "Waterga II", "Waterga III", "Waterja",
+            "Aeroga", "Aeroga II", "Aeroga III", "Aeroja",
+            "Firaga", "Firaga II", "Firaga III", "Firaja",
+            "Blizzaga", "Blizzaga II", "Blizzaga III", "Blizzaja",
+            "Thundaga", "Thundaga II", "Thundaga III", "Thundaja",
+            -- Ancient Magic
+            "Freeze", "Burst", "Flood", "Flare", "Tornado", "Quake",
+            "Freeze II", "Burst II", "Flood II", "Flare II", "Tornado II", "Quake II",
+            -- Enfeebling and Dark Magic
+            "Sleep", "Sleep II", "Sleepga", "Sleepga II", "Bind", "Break", "Stun",
+            "Dispel", "Blind", "Blind II", "Poison", "Poison II", "Poisonga",
+            "Bio", "Bio II", "Bio III", "Drain", "Aspir", "Aspir II", "Aspir III",
+            "Comet", "Meteor", "Death",
+            -- Utility Spells
+            "Warp", "Warp II", "Escape", "Tractor"
         }
+    
         abilities = {
             "", "Manafont", "Elemental Seal", "Tranquil Heart"
         }
@@ -512,18 +535,30 @@ local function get_job_spells_and_abilities(job_id)
 
     elseif job_id == 5 then -- RDM (Red Mage)
         spells = {
-            "", "Cure", "Cure II", "Cure III", "Cure IV", "Cure V", "Curaga", "Curaga II", 
-            "Raise", "Raise II", "Reraise", "Regen", "Regen II", 
-            "Dia", "Dia II", "Dia III", "Bio", "Bio II", "Bio III", 
-            "Paralyze", "Paralyze II", "Silence", "Slow", "Slow II", "Blind", "Blind II", "Bind", 
-            "Gravity", "Gravity II", "Dispel", "Inundation", 
-            "Sleep", "Sleep II", "Sleepga", "Break", "Addle", "Addle II", 
-            "Phalanx", "Phalanx II", "Stoneskin", "Blink", "Aquaveil", 
-            "Enfire", "Enblizzard", "Enaero", "Enstone", "Enthunder", "Enwater", 
-            "Gain-STR", "Gain-DEX", "Gain-VIT", "Gain-AGI", "Gain-INT", "Gain-MND", "Gain-CHR", 
-            "Haste", "Haste II", "Refresh", "Refresh II", "Refresh III", 
-            "Temper", "Temper II", 
-            "Protect", "Protect II", "Protect III", "Shell", "Shell II", "Shell III"
+            "",
+            -- Healing Magic
+            "Cure", "Cure II", "Cure III", "Cure IV", "Cure V",
+            "Curaga", "Curaga II",
+            "Raise", "Raise II", "Reraise",
+            "Regen", "Regen II",
+            -- Enhancing Magic
+            "Phalanx", "Phalanx II", "Stoneskin", "Blink", "Aquaveil",
+            "Enfire", "Enfire II", "Enblizzard", "Enblizzard II", "Enaero", "Enaero II",
+            "Enstone", "Enstone II", "Enthunder", "Enthunder II", "Enwater", "Enwater II",
+            "Temper", "Temper II",
+            "Gain-STR", "Gain-DEX", "Gain-VIT", "Gain-AGI", "Gain-INT", "Gain-MND", "Gain-CHR",
+            "Haste", "Haste II",
+            "Refresh", "Refresh II", "Refresh III",
+            "Protect", "Protect II", "Protect III", "Shell", "Shell II", "Shell III",
+            -- Enfeebling Magic
+            "Dia", "Dia II", "Dia III",
+            "Bio", "Bio II", "Bio III",
+            "Paralyze", "Paralyze II", "Silence", "Slow", "Slow II", "Blind", "Blind II",
+            "Bind", "Gravity", "Gravity II", "Dispel", "Inundation",
+            "Sleep", "Sleep II", "Sleepga", "Break", "Break II",
+            "Addle", "Addle II",
+            -- Dark Magic
+            "Drain", "Drain II", "Aspir", "Aspir II"
         }
         abilities = {
             "", "Chainspell", "Convert", "Composure", "Saboteur", "Spontaneity", "Stymie"
