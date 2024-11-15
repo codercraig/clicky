@@ -438,7 +438,7 @@ local function get_job_spells_and_abilities(job_id)
             "Blizzard", "Blizzard II", "Blizzard III", "Blizzard IV", "Blizzard V", 
             "Thunder", "Thunder II", "Thunder III", "Thunder IV", "Thunder V", 
             "Sleep", "Sleep II", "Break", "Stun", "Flare", "Burst", "Flood", "Tornado", 
-            "Comet", "Meteor"
+            "Comet", "Meteor",  "Flare II", "Burst II", "Flood II", "Tornado II"
         }
         abilities = {
             "", "Manafont", "Elemental Seal", "Tranquil Heart"
