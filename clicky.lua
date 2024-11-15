@@ -179,7 +179,6 @@ local function save_job_settings(settings_table, job)
     end
 end
 
-
 -- Load job settings
 local function load_job_settings(job)
     local job_name = jobIconMapping[job]
@@ -264,7 +263,6 @@ local function execute_commands(commands)
             -- Debug print the command before execution
             --print("Executing Command:", command.command)
 
-            
             AshitaCore:GetChatManager():QueueCommand(1, command.command)
             index = index + 1
             if index <= #commands then
@@ -274,9 +272,9 @@ local function execute_commands(commands)
                 else
                     execute_next_command()
                 end
+            else
+                print("All commands executed.")
             end
-        else
-            print("All commands executed.")
         end
     end
 
@@ -370,67 +368,84 @@ local target_map = {
     ["off"] = "off"
 }
 
--- Initialize combined lists for spells and abilities
+-- Initialize combined lists for spells, abilities, and weaponskills
 local combined_spells = { "" }  -- Start with an empty string to prevent nil index errors
 local combined_abilities = { "" }  -- Same here
+local combined_weaponskills = { "" }  -- For weapon skills
+
+-- Function to retrieve spells available for a given job
+local function get_job_spells(job_id)
+    local job_spells, _, _ = get_job_spells_and_abilities(job_id)
+    local spell_dict = {}
+    for _, spell_name in ipairs(job_spells) do
+        spell_dict[spell_name] = true
+    end
+    return spell_dict
+end
+
+-- Function to retrieve abilities available for a given job
+local function get_job_abilities(job_id)
+    local _, job_abilities, _ = get_job_spells_and_abilities(job_id)
+    local ability_dict = {}
+    for _, ability_name in ipairs(job_abilities) do
+        ability_dict[ability_name] = true
+    end
+    return ability_dict
+end
+
+-- Function to retrieve weapon skills available for a given job
+local function get_job_weaponskills(job_id)
+    local _, _, job_weaponskills = get_job_spells_and_abilities(job_id)
+    local weaponskill_dict = {}
+    for _, ws_name in ipairs(job_weaponskills) do
+        weaponskill_dict[ws_name] = true
+    end
+    return weaponskill_dict
+end
 
 local function get_job_spells_and_abilities(job_id)
     local spells = {}
     local abilities = {}
     local weaponskills = {}
 
-    if job_id == 3 then -- WHM
+    if job_id == 3 then -- WHM (White Mage)
         spells = {
-            "","Cure", "Cure II", "Cure III", "Cure IV", "Cure V", "Curaga", "Curaga II", "Curaga III",
-            "Raise", "Raise II", "Reraise", "Reraise II", "Poisona", "Paralyna", "Blindna", "Silena",
-            "Stona", "Viruna", "Cursna", "Dia", "Dia II", "Banish", "Banish II", "Banish III", 
-            "Banishga", "Banishga II", "Diaga", "Holy", "Holy II", "Protect", "Protect II", "Protect III", 
-            "Protect IV", "Shell", "Shell II", "Shell III", "Shell IV", "Regen", "Regen II", "Regen III",
-            "Regen IV", "Auspice", "Erase", "Haste", "Barstonra", "Barwatera", "Baraera", "Barfira",
-            "Barblizzara", "Barthundra", "Barstone", "Barwater", "Baraero", "Barfire", "Barblizzard", 
-            "Barthunder", "Barpoison", "Barparalyze", "Barsleep", "Barblind", "Barsilence", "Barpetrify",
-            "Barvirus", "Boost", "Aquaveil", "Stoneskin", "Blink", "Deodorize", "Sneak", 
-            "Invisible", "Teleport-Mea", "Teleport-Dem", "Teleport-Holla", 
-            "Teleport-Altep", "Teleport-Yhoat", "Teleport-Vahzl",
-            "Protectra", "Protectra II", "Protectra III", "Protectra IV", "Shellra", "Shellra II", 
-            "Shellra III", "Shellra IV", "Reraise III", "Enlight"
+            "", "Cure", "Cure II", "Cure III", "Cure IV", "Cure V", "Cure VI", 
+            "Curaga", "Curaga II", "Curaga III", "Curaga IV", "Curaga V", 
+            "Raise", "Raise II", "Raise III", "Reraise", "Reraise II", "Reraise III", 
+            "Regen", "Regen II", "Regen III", "Regen IV", 
+            "Dia", "Dia II", "Banish", "Banish II", "Banish III", 
+            "Holy", "Holy II", "Protectra V", "Shellra V", "Auspice", 
+            "Haste", "Erase", "Boost", "Aquaveil", "Stoneskin", "Blink", 
+            "Teleport-Mea", "Teleport-Dem", "Teleport-Holla", 
+            "Teleport-Altep", "Teleport-Yhoat", "Teleport-Vahzl", "Enlight"
         }
-
         abilities = {
-            "",
-            "Benediction",
-            "Divine Seal",
-            "Afflatus Solace",
-            "Afflatus Misery",
-            "Devotion",
-            "Martyr",
+            "", "Benediction", "Divine Seal", "Afflatus Solace", "Afflatus Misery", 
+            "Devotion", "Martyr"
         }
-
         weaponskills = {
-            "",  -- Include any relevant WS for WHM here
+            "", "Shining Strike", "Seraph Strike", "Hexa Strike", 
+            "Mystic Boon", "Black Halo", "Realmrazer"
         }
 
-    elseif job_id == 4 then -- BLM
+    elseif job_id == 4 then -- BLM (Black Mage)
         spells = {
-            "","Stone","Stone", "Water", "Aero", "Fire", "Blizzard", "Thunder", "Stone II", "Water II",
-            "Aero II", "Fire II", "Blizzard II", "Thunder II", "Stone III", "Water III", "Aero III",
-            "Fire III", "Blizzard III", "Thunder III", "Blizzard IV","Thunder IV","Fire IV","Water IV",
-            "Stonega", "Waterga", "Aeroga", "Firaga", "Blizzaga", "Thundaga", "Stonega II", "Waterga II",
-            "Aeroga II", "Firaga II", "Blizzaga II", "Thundaga II", "Poison", "Poison II", "Poisonga", 
-            "Bio", "Bio II", "Drain", "Aspir", "Warp", "Warp II", "Escape", "Tractor", "Sleep", "Sleep II",
-            "Bind", "Dispel", "Stun","Freeze", "Freeze II", "Burst", "Burst II", "Flare", "Flare II", "Tornado",
-            "Tornado II", "Flood", "Flood II",
+            "", "Stone", "Stone II", "Stone III", "Stone IV", "Stone V", 
+            "Water", "Water II", "Water III", "Water IV", "Water V", 
+            "Aero", "Aero II", "Aero III", "Aero IV", "Aero V", 
+            "Fire", "Fire II", "Fire III", "Fire IV", "Fire V", 
+            "Blizzard", "Blizzard II", "Blizzard III", "Blizzard IV", "Blizzard V", 
+            "Thunder", "Thunder II", "Thunder III", "Thunder IV", "Thunder V", 
+            "Sleep", "Sleep II", "Break", "Stun", "Flare", "Burst", "Flood", "Tornado", 
+            "Comet", "Meteor"
         }
-
         abilities = {
-            "",
-            "Manafont",
-            "Elemental Seal",
-            "Tranquil Heart",
+            "", "Manafont", "Elemental Seal", "Tranquil Heart"
         }
-
         weaponskills = {
-            "",  -- Include any relevant WS for BLM here
+            "", "Shining Strike", "Seraph Strike", "Earth Crusher", "Starburst", 
+            "Sunburst", "Spirit Taker", "Cataclysm"
         }
 
     elseif job_id == 15 then -- SMN (Summoner)
@@ -474,146 +489,186 @@ local function get_job_spells_and_abilities(job_id)
             "Gate of Tartarus", -- Staff (Mythic Weapon)
         }
     elseif job_id == 1 then -- WAR (Warrior)
-        spells = {}  -- Warriors do not have spells
+        spells = {}
         abilities = {
-            "", "Provoke", "Berserk", "Defender", "Aggressor", "Warcry", "Retaliation", "Restraint", "Warrior's Charge"
+            "", "Provoke", "Berserk", "Defender", "Warcry", "Aggressor", 
+            "Retaliation", "Restraint", "Mighty Strikes", "Tomahawk"
         }
         weaponskills = {
-            "", "Raging Axe", "Smash Axe", "Rampage", "Decimation", "Full Break", "Steel Cyclone", "Fell Cleave"
+            "", "Raging Axe", "Smash Axe", "Rampage", "Decimation", 
+            "Full Break", "Steel Cyclone", "Fell Cleave", "Upheaval"
         }
 
     elseif job_id == 2 then -- MNK (Monk)
-    spells = {}  -- Monks do not have spells
-    abilities = {
-        "", "Hundred Fists", "Boost", "Dodge", "Focus", "Counterstance", "Chi Blast", "Perfect Counter", "Formless Strikes", "Impetus", "Footwork"
-    }
-    weaponskills = {
-        "","Shijin Spiral", "Asuran Fists", "Raging Fists", "Howling Fist", "Dragon Kick", "Tornado Kick", "Final Heaven"
-    }
+        spells = {}
+        abilities = {
+            "", "Hundred Fists", "Chakra", "Boost", "Dodge", "Focus", 
+            "Counterstance", "Chi Blast", "Perfect Counter", "Impetus", "Footwork"
+        }
+        weaponskills = {
+            "", "Raging Fists", "Howling Fist", "Dragon Kick", "Asuran Fists", 
+            "Shijin Spiral", "Victory Smite", "Tornado Kick", "Final Heaven"
+        }
 
     elseif job_id == 5 then -- RDM (Red Mage)
         spells = {
-            "", "Cure", "Cure II", "Cure III", "Dia", "Dia II", "Dia III", "Paralyze", "Paralyze II", "Slow", "Slow II", 
-            "Phalanx", "Phalanx II", "Enfire", "Enblizzard", "Enaero", "Enstone", "Enthunder", "Enwater", 
-            "Refresh", "Refresh II", "Haste", "Dispel", "Bio", "Bio II", "Bio III", "Sleep", "Sleep II", 
-            "Blind", "Bind", "Gravity", "Poison", "Poison II", "Paralyze", "Paralyze II", "Silence", 
-            "Dispel", "Barstonra", "Barwatera", "Baraera", "Barfira", "Barblizzara", "Barthundra", 
-            "Protect", "Protect II", "Shell", "Shell II", "Raise", "Raise II", "Reraise"
+            "", "Cure", "Cure II", "Cure III", "Cure IV", "Cure V", "Curaga", "Curaga II", 
+            "Raise", "Raise II", "Reraise", "Regen", "Regen II", 
+            "Dia", "Dia II", "Dia III", "Bio", "Bio II", "Bio III", 
+            "Paralyze", "Paralyze II", "Silence", "Slow", "Slow II", "Blind", "Blind II", "Bind", 
+            "Gravity", "Gravity II", "Dispel", "Inundation", 
+            "Sleep", "Sleep II", "Sleepga", "Break", "Addle", "Addle II", 
+            "Phalanx", "Phalanx II", "Stoneskin", "Blink", "Aquaveil", 
+            "Enfire", "Enblizzard", "Enaero", "Enstone", "Enthunder", "Enwater", 
+            "Gain-STR", "Gain-DEX", "Gain-VIT", "Gain-AGI", "Gain-INT", "Gain-MND", "Gain-CHR", 
+            "Haste", "Haste II", "Refresh", "Refresh II", "Refresh III", 
+            "Temper", "Temper II", 
+            "Protect", "Protect II", "Protect III", "Shell", "Shell II", "Shell III"
         }
         abilities = {
-            "", "Chainspell"
+            "", "Chainspell", "Convert", "Composure", "Saboteur", "Spontaneity", "Stymie"
         }
         weaponskills = {
-            "", "Savage Blade", "Chant du Cygne", "Death Blossom"
+            "", "Fast Blade", "Burning Blade", "Red Lotus Blade", "Flat Blade", "Seraph Blade", 
+            "Vorpal Blade", "Swift Blade", "Savage Blade", "Chant du Cygne", "Death Blossom", 
+            "Expiacion"
         }
 
     elseif job_id == 6 then -- THF (Thief)
-        spells = {}  -- Thieves do not have spells
+        spells = {}
         abilities = {
-            "", "Steal", "Flee", "Hide", "Mug", "Sneak Attack", "Trick Attack", "Assassin's Charge", "Feint", "Conspirator", "Collaborator"
+            "", "Steal", "Flee", "Hide", "Mug", "Sneak Attack","Despoil",
+            "Trick Attack", "Assassin's Charge", "Conspirator", "Accomplice", "Collaborator"
         }
         weaponskills = {
-            "", "Dancing Edge", "Evisceration", "Shark Bite", "Mandalic Stab", "Mercy Stroke", "Exenterator"
+            "", "Dancing Edge", "Evisceration", "Shark Bite", 
+            "Mandalic Stab", "Mercy Stroke", "Rudra's Storm"
         }
 
     elseif job_id == 7 then -- PLD (Paladin)
         spells = {
-            "", "Cure", "Cure II", "Cure III", "Dia", "Banish", "Banish II", "Protect", "Protect II", 
-            "Shell", "Shell II", "Flash", "Enlight", "Holy", "Reprisal", "Phalanx", "Regen", "Raise", "Reraise"
+            "", "Cure", "Cure II", "Cure III", "Cure IV", 
+            "Banish", "Banish II", "Holy", "Holy II", 
+            "Protect", "Protect II", "Protect III", "Protect IV", "Protect V",
+            "Shell", "Shell II", "Shell III", "Shell IV", "Shell V",
+            "Reprisal", "Flash", "Enlight", "Phalanx", "Regen", "Raise", "Reraise"
         }
         abilities = {
-            "", "Invincible", "Shield Bash", "Sentinel", "Cover", "Rampart", "Fealty", "Chivalry"
+            "", "Invincible", "Shield Bash", "Sentinel", "Cover", "Majesty",
+            "Rampart", "Fealty", "Chivalry", "Divine Emblem"
         }
         weaponskills = {
-            "", "Swift Blade", "Vorpal Blade", "Savage Blade", "Knights of Round", "Atonement"
+            "", "Fast Blade","Burning Blade","Red Lotus Blade","Flat Blade","Shining Blade","Seraph Blade", "Savage Blade", "Swift Blade", "Vorpal Blade", 
+            "Circle Blade", "Excalibur", "Atonement", "Knights of Round", "Requiescat"
         }
 
     elseif job_id == 8 then -- DRK (Dark Knight)
         spells = {
-            "", "Bio", "Bio II", "Drain", "Aspir", "Absorb-STR", "Absorb-DEX", "Absorb-VIT", 
-            "Absorb-AGI", "Absorb-INT", "Absorb-MND", "Absorb-CHR", "Stun"
+            "", "Bio", "Bio II", "Drain", "Drain II", "Aspir", "Aspir II", 
+            "Absorb-STR", "Absorb-DEX", "Absorb-VIT", "Absorb-AGI", 
+            "Absorb-INT", "Absorb-MND", "Absorb-CHR", "Stun"
         }
         abilities = {
-            "", "Soul Eater", "Arcane Circle", "Weapon Bash", "Last Resort", "Dark Seal", "Blood Weapon"
+            "", "Blood Weapon", "Soul Eater", "Arcane Circle", 
+            "Weapon Bash", "Last Resort", "Dark Seal", "Nether Void"
         }
         weaponskills = {
-            "", "Spinning Slash", "Cross Reaper", "Guillotine", "Insurgency", "Quietus", "Entropy"
+            "", "Guillotine", "Spinning Slash", "Cross Reaper", 
+            "Entropy", "Insurgency", "Quietus", "Resolution"
         }
 
     elseif job_id == 9 then -- BST (Beastmaster)
-        spells = {}  -- Beastmasters do not have spells
+        spells = {}
         abilities = {
-            "", "Charm", "Call Beast", "Familiar", "Killer Instinct", "Feral Howl", "Unleash"
+            "", "Charm", "Call Beast", "Familiar", "Killer Instinct", 
+            "Feral Howl", "Unleash", "Spur", "Run Wild"
         }
         weaponskills = {
-            "", "Rampage", "Calamity", "Decimation", "Onslaught"
+            "", "Rampage", "Calamity", "Decimation", 
+            "Onslaught", "Primal Rend"
         }
 
     elseif job_id == 10 then -- BRD (Bard)
-        spells = {}  -- Bards do not have traditional spells
+        spells = {}
         abilities = {
-            "", "Soul Voice", "Nightingale", "Troubadour"
+            "", "Soul Voice", "Nightingale", "Troubadour", "Pianissimo", 
+            "Clarion Call", "Tenuto", "Marcato"
         }
         weaponskills = {
-            "", "Mordant Rime", "Evisceration"
+            "", "Evisceration", "Mordant Rime"
         }
 
     elseif job_id == 11 then -- RNG (Ranger)
-        spells = {}  -- Rangers do not have spells
+        spells = {}
         abilities = {
-            "", "Eagle Eye Shot", "Sharpshot", "Barrage", "Camouflage", "Scavenge", "Unlimited Shot"
+            "", "Eagle Eye Shot", "Sharpshot", "Barrage", 
+            "Camouflage", "Scavenge", "Unlimited Shot", "Double Shot"
         }
         weaponskills = {
-            "", "Sidewinder", "Slug Shot", "Arching Arrow", "Coronach", "Jishnu's Radiance"
+            "", "Sidewinder", "Slug Shot", "Arching Arrow", 
+            "Jishnu's Radiance", "Coronach", "Last Stand", "Apex Arrow"
         }
 
     elseif job_id == 12 then -- SAM (Samurai)
-        spells = {}  -- Samurais do not have spells
+        spells = {}
         abilities = {
-            "", "Meikyo Shisui", "Third Eye", "Meditate", "Seigan", "Hasso", "Sekkanoki", "Konzen-ittai"
+            "", "Meikyo Shisui", "Third Eye", "Meditate", 
+            "Seigan", "Hasso", "Sekkanoki", "Konzen-ittai", "Sengikori"
         }
         weaponskills = {
-            "", "Tachi: Gekko", "Tachi: Kasha", "Tachi: Kagero", "Tachi: Enpi", "Tachi: Yukikaze", "Tachi: Shoha"
+            "", "Tachi: Gekko", "Tachi: Kasha", "Tachi: Kagero", 
+            "Tachi: Enpi", "Tachi: Yukikaze", "Tachi: Shoha", "Tachi: Fudo", "Apex Arrow"
         }
 
     elseif job_id == 13 then -- NIN (Ninja)
         spells = {
-            "", "Utsusemi: Ichi", "Utsusemi: Ni", "Jubaku: Ichi", "Hojo: Ichi", "Kurayami: Ichi", 
-            "Dokumori: Ichi", "Katon: Ichi", "Hyoton: Ichi", "Huton: Ichi", "Doton: Ichi", "Suiton: Ichi", 
-            "Raiton: Ichi", "Katon: Ni", "Hyoton: Ni", "Huton: Ni", "Doton: Ni", "Suiton: Ni", "Raiton: Ni"
+            "", "Utsusemi: Ichi", "Utsusemi: Ni", "Jubaku: Ichi", 
+            "Hojo: Ichi", "Kurayami: Ichi", "Dokumori: Ichi", 
+            "Katon: Ichi", "Hyoton: Ichi", "Huton: Ichi", 
+            "Doton: Ichi", "Suiton: Ichi", "Raiton: Ichi", 
+            "Katon: Ni", "Hyoton: Ni", "Huton: Ni", 
+            "Doton: Ni", "Suiton: Ni", "Raiton: Ni"
         }
         abilities = {
-            "", "Mijin Gakure", "Provoke", "Yonin", "Innin", "Futae", "Issekigan"
+            "", "Mijin Gakure", "Provoke", "Yonin", 
+            "Innin", "Futae", "Issekigan", "Sange"
         }
         weaponskills = {
-            "", "Blade: Jin", "Blade: Ku", "Blade: Kamu", "Blade: Ten"
+            "", "Blade: Jin", "Blade: Ku", "Blade: Kamu", 
+            "Blade: Ten", "Blade: Hi", "Blade: Shun"
         }
 
     elseif job_id == 14 then -- DRG (Dragoon)
-        spells = {}  -- Dragoons do not have spells
+        spells = {}
         abilities = {
-            "", "Jump", "High Jump", "Super Jump", "Spirit Jump", "Soul Jump", "Call Wyvern", "Spirit Link"
+            "", "Jump", "High Jump", "Super Jump", 
+            "Spirit Jump", "Soul Jump", "Call Wyvern", "Spirit Link", "Angon"
         }
         weaponskills = {
-            "", "Drakesbane", "Impulse Drive", "Geirskogul"
+            "", "Drakesbane", "Impulse Drive", "Geirskogul", 
+            "Camlann's Torment", "Stardiver"
         }
 
     elseif job_id == 16 then -- BLU (Blue Mage)
         spells = {
-            "", "Pollen", "Cocoon", "Cursed Sphere", "Death Ray", "Bludgeon", "Refueling", "Metallic Body", 
-            "Screwdriver", "Sprout Smack", "Head Butt", "Queasyshroom", "Battle Dance", "Magic Fruit"
+            "", "Pollen", "Cocoon", "Bludgeon", "Head Butt", 
+            "Refueling", "Metallic Body", "Disseverment", "Cannonball", 
+            "Quad. Continuum", "Delta Thrust", "Sinker Drill", 
+            "Expiacion", "Chant du Cygne", "Requiescat"
         }
         abilities = {
-            "", "Azure Lore"
+            "", "Azure Lore", "Burst Affinity", "Chain Affinity", 
+            "Efflux"
         }
         weaponskills = {
-            "", "Chant du Cygne", "Expiacion", "Savage Blade"
+            "", "Chant du Cygne", "Savage Blade", "Expiacion"
         }
 
     elseif job_id == 17 then -- COR (Corsair)
-        spells = {}  -- Corsairs do not have traditional spells
+        spells = {}
         abilities = {
-            "", "Double-Up", "Random Deal", "Fold", "Snake Eye", "Wild Card", "Quick Draw", "Cutting Cards"
+            "", "Random Deal", "Fold", "Snake Eye", 
+            "Wild Card", "Cutting Cards", "Double-Up", "Quick Draw"
         }
         weaponskills = {
             "", "Leaden Salute", "Wildfire", "Last Stand"
@@ -656,22 +711,25 @@ local function get_job_spells_and_abilities(job_id)
         }
 
     elseif job_id == 19 then -- DNC (Dancer)
-        spells = {}  -- Dancers do not have spells
+        spells = {}
         abilities = {
-            "", "Trance", "Step", "Flourish", "Waltz", "Drain Samba","Drain Samba II","Spectral Jig", "No Foot Rise", "Climactic Flourish"
+            "", "Trance", "No Foot Rise", "Climactic Flourish", 
+            "Reverse Flourish", "Haste Samba", "Drain Samba II", 
+            "Spectral Jig", "Violent Flourish"
         }
         weaponskills = {
-            "", "Evisceration", "Pyrrhic Kleos"
+            "", "Evisceration", "Pyrrhic Kleos", "Rudra's Storm"
         }
 
     elseif job_id == 20 then -- SCH (Scholar)
         spells = {
-            "", "Stone", "Water", "Aero", "Fire", "Blizzard", "Thunder", "Cure", "Cure II", "Regen", 
-            "Drain", "Aspir", "Sleep", "Sleep II", "Stonega", "Waterga", "Aeroga", "Firaga", "Blizzaga", 
-            "Thundaga", "Sandstorm", "Rainstorm", "Windstorm", "Firestorm", "Hailstorm", "Thunderstorm"
+            "", "Stone", "Water", "Aero", "Fire", "Blizzard", 
+            "Thunder", "Regen", "Drain", "Aspir", 
+            "Sandstorm", "Rainstorm", "Hailstorm", "Firestorm"
         }
         abilities = {
-            "", "Tabula Rasa", "Light Arts", "Dark Arts", "Manifestation", "Accession", "Altruism", "Focalization"
+            "", "Tabula Rasa", "Light Arts", "Dark Arts", 
+            "Accession", "Manifestation", "Celerity"
         }
         weaponskills = {
             "", "Omniscience", "Cataclysm", "Myrkr"
@@ -679,26 +737,40 @@ local function get_job_spells_and_abilities(job_id)
 
     elseif job_id == 21 then -- GEO (Geomancer)
         spells = {
-            "", "Indi-Barrier", "Indi-Acumen", "Indi-Fend", "Indi-Precision", "Indi-Refresh", 
-            "Indi-Fury", "Indi-Focus", "Indi-Wilt", "Indi-Vex", "Indi-Haste", "Indi-Fade"
+            "", "Indi-Barrier", "Indi-Acumen", "Indi-Fend", 
+            "Indi-Precision", "Indi-Refresh", "Indi-Fury", 
+            "Indi-Focus", "Indi-Wilt", "Indi-Vex", "Indi-Haste", 
+            "Indi-Fade", "Geo-Barrier", "Geo-Acumen", "Geo-Fend", 
+            "Geo-Precision", "Geo-Refresh", "Geo-Fury", 
+            "Geo-Focus", "Geo-Wilt", "Geo-Vex", "Geo-Haste", 
+            "Geo-Fade"
         }
         abilities = {
-            "", "Bolster", "Collimated Fervor", "Life Cycle", "Blaze of Glory", "Dematerialize"
+            "", "Bolster", "Collimated Fervor", "Life Cycle", 
+            "Blaze of Glory", "Dematerialize", "Ecliptic Attrition", 
+            "Full Circle", "Mending Halation", "Radial Arcana"
         }
         weaponskills = {
-            "", "Exudation", "Realmrazer"
+            "", "Exudation", "Realmrazer", "Black Halo", 
+            "Hexa Strike", "Judgment"
         }
 
     elseif job_id == 22 then -- RUN (Rune Fencer)
         spells = {
-            "", "Inspire", "Vivacious Pulse", "Ignis", "Gelus", "Flabra", "Tellus", "Sulpor", "Unda", 
-            "Lux", "Tenebrae", "Vallation", "Valiance", "Liement", "Gambit", "Rayke"
+            "", "Inspire", "Vivacious Pulse", "Ignis", 
+            "Gelus", "Flabra", "Tellus", "Sulpor", 
+            "Unda", "Lux", "Tenebrae", "Vallation", 
+            "Valiance", "Liement", "Gambit", "Rayke", 
+            "Swipe", "Lunge", "Embolden", "Vivacious Pulse"
         }
         abilities = {
-            "", "One for All", "Battuta", "Elemental Sforzo", "Sleight of Sword", "Swordplay"
+            "", "Battuta", "Elemental Sforzo", "One For All", 
+            "Swordplay", "Embolden", "Vivacious Pulse", 
+            "Gambit", "Rayke"
         }
         weaponskills = {
-            "", "Resolution", "Dimidiation", "Requiescat"
+            "", "Resolution", "Dimidiation", "Requiescat", 
+            "Savage Blade", "Chant du Cygne"
         }
     end
 
@@ -706,81 +778,11 @@ local function get_job_spells_and_abilities(job_id)
     return spells, abilities, weaponskills
 end
 
-
--- Function to retrieve spells available for a given job
-local function get_job_spells(job_id)
-    local job_spells, _, _ = get_job_spells_and_abilities(job_id)
-    local spell_dict = {}
-    for _, spell_name in ipairs(job_spells) do
-        spell_dict[spell_name] = true
-    end
-    return spell_dict
-end
-
-local function fetch_available_spells_with_jobs()
-    local player = AshitaCore:GetMemoryManager():GetPlayer()
-    local main_job_spells = {}
-    local sub_job_spells = {}
-
-    if not player then
-        print("Error: Unable to access player memory manager.")
-        return {}
-    end
-
-    -- Get player's main job and sub job
-    local main_job_id = player:GetMainJob()
-    local sub_job_id = player:GetSubJob()
-
-    -- Retrieve the spells associated with the main job and sub job
-    local main_job_spell_dict = get_job_spells(main_job_id)
-    local sub_job_spell_dict = get_job_spells(sub_job_id)
-
-    -- Iterate through all possible spell IDs
-    for spellId = 1, 1024 do
-        -- Get the spell resource by ID
-        local spell = AshitaCore:GetResourceManager():GetSpellById(spellId)
-
-        if spell and spell.Name then
-            local spell_name = spell.Name[1]
-
-            -- Check if the player knows the spell and if it's a main job spell
-            if player:HasSpell(spell.Index) then
-                if main_job_spell_dict[spell_name] then
-                    table.insert(main_job_spells, spell_name)
-                elseif sub_job_spell_dict[spell_name] then
-                    table.insert(sub_job_spells, spell_name)
-                end
-            end
-        end
-    end
-
-    -- Combine main job spells first, then subjob spells
-    local combined_spells = {}
-    local seen_spells = {}
-
-    for _, spell_name in ipairs(main_job_spells) do
-        if not seen_spells[spell_name] then
-            table.insert(combined_spells, spell_name)
-            seen_spells[spell_name] = true
-        end
-    end
-
-    for _, spell_name in ipairs(sub_job_spells) do
-        if not seen_spells[spell_name] then
-            table.insert(combined_spells, spell_name)
-            seen_spells[spell_name] = true
-        end
-    end
-
-    -- Return the ordered and deduplicated list of spells
-    return combined_spells
-end
-
 local function update_spells_and_abilities()
     -- Clear the existing lists
-    combined_spells = { "" }  -- Start with an empty string to prevent nil index errors
-    combined_abilities = { "" }  -- Start with an empty string to prevent nil index errors
-    combined_weaponskills = { "" }  -- Start with an empty string to prevent nil index errors
+    combined_spells = { "" }
+    combined_abilities = { "" }
+    combined_weaponskills = { "" }
 
     local player = AshitaCore:GetMemoryManager():GetPlayer()
     if not player then return end
@@ -788,63 +790,32 @@ local function update_spells_and_abilities()
     local main_job_id = player:GetMainJob()
     local sub_job_id = player:GetSubJob()
 
-    -- Get dynamically fetched spells for the player based on job and subjob
-    local available_spells = fetch_available_spells_with_jobs()
-
     -- Get job-specific spells, abilities, and weapon skills
     local main_spells, main_abilities, main_weaponskills = get_job_spells_and_abilities(main_job_id)
     local sub_spells, sub_abilities, sub_weaponskills = get_job_spells_and_abilities(sub_job_id)
 
-    -- Helper function to check if a spell, ability, or weapon skill exists in the reference list
-    local function exists_in_reference(item, reference)
-        for _, ref_item in ipairs(reference) do
-            if ref_item == item then
-                return true
+    -- Combine main job and subjob spells, abilities, and weapon skills
+    local function combine_lists(main_list, sub_list)
+        local combined = {}
+        local seen = {}
+        for _, item in ipairs(main_list) do
+            if not seen[item] then
+                table.insert(combined, item)
+                seen[item] = true
             end
         end
-        return false
+        for _, item in ipairs(sub_list) do
+            if not seen[item] then
+                table.insert(combined, item)
+                seen[item] = true
+            end
+        end
+        return combined
     end
 
-    -- Add dynamically fetched spells to combined_spells if they exist in the reference list for the main or sub job
-    if available_spells then
-        for _, spell in ipairs(available_spells) do
-            if exists_in_reference(spell, main_spells) or exists_in_reference(spell, sub_spells) then
-                table.insert(combined_spells, spell)
-            end
-        end
-    end
-
-    -- Abilities are already fetched and can be added directly if they exist in the reference list for the main or sub job
-    if main_abilities then
-        for _, ability in ipairs(main_abilities) do
-            if exists_in_reference(ability, main_abilities) then
-                table.insert(combined_abilities, ability)
-            end
-        end
-    end
-    if sub_abilities then
-        for _, ability in ipairs(sub_abilities) do
-            if exists_in_reference(ability, sub_abilities) then
-                table.insert(combined_abilities, ability)
-            end
-        end
-    end
-
-    -- Add weapon skills to combined_weaponskills if they exist in the reference list for the main or sub job
-    if main_weaponskills then
-        for _, weaponskill in ipairs(main_weaponskills) do
-            if exists_in_reference(weaponskill, main_weaponskills) then
-                table.insert(combined_weaponskills, weaponskill)
-            end
-        end
-    end
-    if sub_weaponskills then
-        for _, weaponskill in ipairs(sub_weaponskills) do
-            if exists_in_reference(weaponskill, sub_weaponskills) then
-                table.insert(combined_weaponskills, weaponskill)
-            end
-        end
-    end
+    combined_spells = combine_lists(main_spells, sub_spells)
+    combined_abilities = combine_lists(main_abilities, sub_abilities)
+    combined_weaponskills = combine_lists(main_weaponskills, sub_weaponskills)
 end
 
 
@@ -855,7 +826,7 @@ end
 
 -- Variables to store the selected options
 local selected_action_type = 1
-local selected_spell = 1
+local selected_spell = ""
 local selected_target = 1
 
 local spell_search_input = ""  -- For search box
@@ -864,6 +835,7 @@ local search_input = { "" } -- Initialize the search input as a table with an em
 -- Check the data has been updated properly based on players main/subjob
 local update_triggered = false
 
+-- Update Command Function
 local function update_command(button, is_right_click)
     -- Ensure the states are initialized
     if not button.action_type_states then button.action_type_states = {} end
@@ -897,44 +869,13 @@ local function update_command(button, is_right_click)
             else
                 command_string = nil -- Mark as invalid
             end
-        elseif action_type == "Attack" or action_type == "Ranged" then
+        elseif action_type == "Attack" or action_type == "Ranged" or action_type == "Alt Attack" then
             -- Handle Attack commands
             command_string = string.format('%s %s', action_type_map[action_type], target_map[targets[target_states[cmdIndex]]])
-        elseif action_type == "Magic" or action_type == "Alt Magic" then
-            -- Handle Magic commands
-            local spell_name = combined_spells[spell_states[cmdIndex]]
-            if not spell_name or spell_name == "" then
-                -- If the spell field is empty, trigger the update once to check that its meant to be empty.. 
-                -- This could be caused by r0 or crashes, just a sanity check so player doesnt panic.
-                if not update_triggered then
-                    update_spells_and_abilities()
-                    update_triggered = true
-                end
-            end
-
+        elseif action_type == "Magic" or action_type == "Alt Magic" or action_type == "Abilities" or action_type == "Alt Abilities" or action_type == "Weapon Skills" or action_type == "Alt Weapon Skills" then
+            -- Handle Magic, Abilities, Weapon Skills commands
+            local spell_name = spell_states[cmdIndex]
             command_string = spell_name and string.format('%s "%s" %s', action_type_map[action_type], spell_name or "", target_map[targets[target_states[cmdIndex]]])
-        elseif action_type == "Abilities" or action_type == "Alt Abilities" then
-            -- Handle Abilities commands
-            local ability_name = combined_abilities[spell_states[cmdIndex]]
-            if not ability_name or ability_name == "" then
-                -- If the ability field is empty, trigger the update once
-                if not update_triggered then
-                    update_spells_and_abilities()
-                    update_triggered = true
-                end
-            end
-            command_string = ability_name and string.format('%s "%s" %s', action_type_map[action_type], ability_name or "", target_map[targets[target_states[cmdIndex]]])
-        elseif action_type == "Weapon Skills" or action_type == "Alt Weapon Skills" then
-            -- Handle Weapon Skills commands
-            local weaponskill_name = combined_weaponskills[spell_states[cmdIndex]]
-            if not weaponskill_name or weaponskill_name == "" then
-                -- If the weaponskill field is empty, trigger the update once
-                if not update_triggered then
-                    update_spells_and_abilities()
-                    update_triggered = true
-                end
-            end
-            command_string = weaponskill_name and string.format('%s "%s" %s', action_type_map[action_type], weaponskill_name or "", target_map[targets[target_states[cmdIndex]]])
         else
             -- For any other types, just use the basic command structure (this can be adjusted as needed)
             command_string = string.format('%s "%s" %s', action_type_map[action_type], spell_states[cmdIndex] or "", target_map[targets[target_states[cmdIndex]]])
@@ -950,6 +891,7 @@ local function update_command(button, is_right_click)
     end
 end
 
+-- Render Edit Window Function
 local function render_edit_window()
     if isEditWindowOpen and editing_button_index ~= nil then
         local window = clicky.settings.windows[editing_window_id]
@@ -962,30 +904,35 @@ local function render_edit_window()
 
         -- Ensure individual states are initialized for each command
         if not button.action_type_states then button.action_type_states = {} end
-        if not button.spell_states then button.spell_states = {} end
+        if not button.spell_states then button.spell_states = {} end -- Now stores spell names
         if not button.target_states then button.target_states = {} end
         if not button.search_inputs then button.search_inputs = {} end
         if not button.delays then button.delays = {} end
-        if not button.equipset_states then button.equipset_states = {0} end
+        if not button.equipset_states then button.equipset_states = {} end
 
         -- Initialize right-click specific states
         if not button.right_click_action_type_states then button.right_click_action_type_states = {} end
-        if not button.right_click_spell_states then button.right_click_spell_states = {} end
+        if not button.right_click_spell_states then button.right_click_spell_states = {} end -- Now stores spell names
         if not button.right_click_target_states then button.right_click_target_states = {} end
         if not button.right_click_search_inputs then button.right_click_search_inputs = {} end
         if not button.right_click_delays then button.right_click_delays = {} end
-        if not button.right_click_equipset_states then button.right_click_equipset_states = {0} end
+        if not button.right_click_equipset_states then button.right_click_equipset_states = {} end
 
         -- Initialize middle-click specific states
         if not button.middle_click_commands then button.middle_click_commands = {} end
         if not button.middle_click_search_inputs then button.middle_click_search_inputs = {} end
         if not button.middle_click_delays then button.middle_click_delays = {} end
 
-        -- Initialize states based on existing commands
-        -- Loop over each command to ensure all relevant states are initialized for main (left-click) commands
+        -- Ensure individual states are initialized for each command
         for i = 1, #button.commands do
             button.action_type_states[i] = button.action_type_states[i] or selected_action_type
-            button.spell_states[i] = button.spell_states[i] or selected_spell
+            -- Handle backward compatibility for spell_states
+            if type(button.spell_states[i]) == "number" then
+                local index = button.spell_states[i]
+                button.spell_states[i] = combined_spells[index] or ""
+            else
+                button.spell_states[i] = button.spell_states[i] or ""
+            end
             button.target_states[i] = button.target_states[i] or selected_target
             button.search_inputs[i] = button.search_inputs[i] or { "" }
             button.delays[i] = button.delays[i] or { tostring(button.commands[i].delay or 0) }
@@ -995,7 +942,13 @@ local function render_edit_window()
         -- Loop over each command to ensure all relevant states are initialized for right-click commands
         for i = 1, #button.right_click_commands do
             button.right_click_action_type_states[i] = button.right_click_action_type_states[i] or selected_action_type
-            button.right_click_spell_states[i] = button.right_click_spell_states[i] or selected_spell
+            -- Handle backward compatibility for right_click_spell_states
+            if type(button.right_click_spell_states[i]) == "number" then
+                local index = button.right_click_spell_states[i]
+                button.right_click_spell_states[i] = combined_spells[index] or ""
+            else
+                button.right_click_spell_states[i] = button.right_click_spell_states[i] or ""
+            end
             button.right_click_target_states[i] = button.right_click_target_states[i] or selected_target
             button.right_click_search_inputs[i] = button.right_click_search_inputs[i] or { "" }
             button.right_click_delays[i] = button.right_click_delays[i] or { tostring(button.right_click_commands[i].delay or 0) }
@@ -1052,7 +1005,7 @@ local function render_edit_window()
             for cmdIndex, cmdInfo in ipairs(button.commands) do
                 local filtered_spells_or_abilities = {}
                 local action_type = action_types[button.action_type_states[cmdIndex]]
-            
+
                 -- Populate the appropriate list based on action type
                 if action_type == "Magic" or action_type == "Alt Magic" then
                     for _, spell in ipairs(combined_spells) do
@@ -1077,21 +1030,15 @@ local function render_edit_window()
                         table.insert(filtered_spells_or_abilities, equipset)
                     end
                 end
-            
-                -- Determine the spell or ability name based on the selected index
-                local spell_or_ability_name = filtered_spells_or_abilities[button.spell_states[cmdIndex]]
-            
-                if action_type == "Equipset" then
-                    local equipset_number = button.equipset_states[cmdIndex] and button.equipset_states[cmdIndex][1]
-                    if equipset_number then
-                        button.commands[cmdIndex].command = string.format('/equipset %d', equipset_number)
-                    else
-                        print(string.format("Equipset number is not set or is invalid for command %d.", cmdIndex))
+
+                -- Determine the selected spell name
+                local selected_spell_name = button.spell_states[cmdIndex]
+                local selected_index = nil
+                for i, name in ipairs(filtered_spells_or_abilities) do
+                    if name == selected_spell_name then
+                        selected_index = i
+                        break
                     end
-                elseif action_type == "Attack" or action_type == "Alt Attack" or action_type == "Ranged" then
-                    button.commands[cmdIndex].command = string.format('%s %s', action_type_map[action_type], target_map[targets[button.target_states[cmdIndex]]] or "")
-                else
-                    button.commands[cmdIndex].command = string.format('%s "%s" %s', action_type_map[action_type], spell_or_ability_name or "", target_map[targets[button.target_states[cmdIndex]]])
                 end
 
                 -- Dropdown to select Action Type
@@ -1137,13 +1084,13 @@ local function render_edit_window()
                     -- Spell/Ability Dropdown
                     imgui.SetNextItemWidth(150)
                     imgui.SameLine()
-                    if imgui.BeginCombo("##Spell"..cmdIndex, spell_or_ability_name or "") then
-                        for i = 1, #filtered_spells_or_abilities  do
-                            local is_selected = (i == button.spell_states[cmdIndex])
-                            if imgui.Selectable(filtered_spells_or_abilities [i], is_selected) then
-                                button.spell_states[cmdIndex] = i
-                                cmdInfo.spell = filtered_spells_or_abilities [i]
-                                cmdInfo.command = action_type_map[action_types[button.action_type_states[cmdIndex]]] .. " \"" .. cmdInfo.spell .. "\" " .. target_map[targets[button.target_states[cmdIndex]]]
+                    if imgui.BeginCombo("##Spell"..cmdIndex, selected_spell_name or "") then
+                        for i, spell_name in ipairs(filtered_spells_or_abilities) do
+                            local is_selected = (spell_name == selected_spell_name)
+                            if imgui.Selectable(spell_name, is_selected) then
+                                button.spell_states[cmdIndex] = spell_name
+                                cmdInfo.spell = spell_name
+                                cmdInfo.command = action_type_map[action_types[button.action_type_states[cmdIndex]]] .. " \"" .. spell_name .. "\" " .. target_map[targets[button.target_states[cmdIndex]]]
                             end
                             if is_selected then
                                 imgui.SetItemDefaultFocus()
@@ -1184,8 +1131,8 @@ local function render_edit_window()
             if imgui.Button('+Add', { 110, 40 }) then
                 imgui.NewLine()
                 table.insert(button.commands, { command = "", delay = 0 })
-                table.insert(button.action_type_states, {""})
-                table.insert(button.spell_states, selected_spell)
+                table.insert(button.action_type_states, selected_action_type)
+                table.insert(button.spell_states, "")  -- Initialize with empty string
                 table.insert(button.target_states, selected_target)
                 table.insert(button.search_inputs, { "" })
                 table.insert(button.delays, { "0" })
@@ -1207,8 +1154,7 @@ local function render_edit_window()
             if imgui.Button('Execute', { 110, 40 }) then
                 -- Reset and update button commands
                 for cmdIndex, cmdInfo in ipairs(button.commands) do
-                    -- Check if the action type is Equipset and update the command accordingly
-                    update_command(button, false)
+                    update_command(button,false)
                 end
                 -- Execute the updated commands
                 execute_commands(button.commands)
@@ -1248,18 +1194,18 @@ local function render_edit_window()
                         table.insert(filtered_spells_or_abilities, equipset)
                     end
                 end
-                
 
-                -- Determine the spell or ability name based on the selected index
-                local spell_or_ability_name = filtered_spells_or_abilities[button.right_click_spell_states[cmdIndex]]
-
-                -- Ensure the right_click_equipset_states is initialized before accessing
-                if not button.right_click_equipset_states[cmdIndex] then
-                    button.right_click_equipset_states[cmdIndex] = {0}  -- or any default value you expect
+                -- Determine the selected spell name
+                local selected_spell_name = button.right_click_spell_states[cmdIndex]
+                local selected_index = nil
+                for i, name in ipairs(filtered_spells_or_abilities) do
+                    if name == selected_spell_name then
+                        selected_index = i
+                        break
+                    end
                 end
 
-
-                 -- Dropdown to select Action Type
+                -- Dropdown to select Action Type
                 imgui.SetNextItemWidth(150)
                 if imgui.BeginCombo("##RightClickActionType"..cmdIndex, action_types[button.right_click_action_type_states[cmdIndex]] or "") then
                     for i = 1, #action_types do
@@ -1268,8 +1214,8 @@ local function render_edit_window()
                             button.right_click_action_type_states[cmdIndex] = i
                             if action_types[i] == "Equipset" then
                                 cmdInfo.command = string.format('/equipset %d', button.right_click_equipset_states[cmdIndex][1])
-                            elseif action_type[i] == "Attack" or action_type[i] == "Alt Attack" or action_type[i] == "Ranged" then
-                                button.commands[cmdIndex].command = string.format('%s %s', action_type_map[action_type[i]], target_map[targets[button.target_states[cmdIndex]]] or "")
+                            elseif action_types[i] == "Attack" or action_types[i] == "Alt Attack" or action_types[i] == "Ranged" then
+                                cmdInfo.command = string.format('%s %s', action_type_map[action_types[i]], target_map[targets[button.right_click_target_states[cmdIndex]]] or "")
                             else
                                 cmdInfo.command = action_type_map[action_types[i]] .. " " .. (cmdInfo.spell or "") .. " " .. (cmdInfo.target or "")
                             end
@@ -1299,18 +1245,18 @@ local function render_edit_window()
                         imgui.EndCombo()
                     end
                 elseif action_type == "Attack" or action_type == "Alt Attack" or action_type == "Ranged" then
-                        -- Do not show spell/ability dropdown for Attack
+                    -- Do not show spell/ability dropdown for Attack
                 else
                     -- Spell/Ability Dropdown
                     imgui.SetNextItemWidth(150)
                     imgui.SameLine()
-                    if imgui.BeginCombo("##RightClickSpell"..cmdIndex, spell_or_ability_name or "") then
-                        for i = 1, #filtered_spells_or_abilities do
-                            local is_selected = (i == button.right_click_spell_states[cmdIndex])
-                            if imgui.Selectable(filtered_spells_or_abilities[i], is_selected) then
-                                button.right_click_spell_states[cmdIndex] = i
-                                cmdInfo.spell = filtered_spells_or_abilities[i]
-                                cmdInfo.command = action_type_map[action_types[button.right_click_action_type_states[cmdIndex]]] .. " \"" .. cmdInfo.spell .. "\" " .. target_map[targets[button.right_click_target_states[cmdIndex]]]
+                    if imgui.BeginCombo("##RightClickSpell"..cmdIndex, selected_spell_name or "") then
+                        for i, spell_name in ipairs(filtered_spells_or_abilities) do
+                            local is_selected = (spell_name == selected_spell_name)
+                            if imgui.Selectable(spell_name, is_selected) then
+                                button.right_click_spell_states[cmdIndex] = spell_name
+                                cmdInfo.spell = spell_name
+                                cmdInfo.command = action_type_map[action_types[button.right_click_action_type_states[cmdIndex]]] .. " \"" .. spell_name .. "\" " .. target_map[targets[button.right_click_target_states[cmdIndex]]]
                             end
                             if is_selected then
                                 imgui.SetItemDefaultFocus()
@@ -1351,10 +1297,11 @@ local function render_edit_window()
                 imgui.NewLine()
                 table.insert(button.right_click_commands, { command = "", delay = 0 })
                 table.insert(button.right_click_action_type_states, selected_action_type)
-                table.insert(button.right_click_spell_states, selected_spell)
+                table.insert(button.right_click_spell_states, "")  -- Initialize with empty string
                 table.insert(button.right_click_target_states, selected_target)
                 table.insert(button.right_click_search_inputs, { "" })
                 table.insert(button.right_click_delays, { "0" })
+                table.insert(button.right_click_equipset_states, {0})
             end
             imgui.SameLine()
             if imgui.Button('-Remove ', { 110, 40 }) then
@@ -1365,6 +1312,7 @@ local function render_edit_window()
                     table.remove(button.right_click_target_states, #button.right_click_target_states)
                     table.remove(button.right_click_search_inputs, #button.right_click_search_inputs)
                     table.remove(button.right_click_delays, #button.right_click_delays)
+                    table.remove(button.right_click_equipset_states, #button.right_click_equipset_states)
                 end
             end
             imgui.SameLine()
@@ -1506,8 +1454,6 @@ local function render_edit_window()
     end
 end
 
-
-
 -- Add a new window
 local function add_new_window()
     local new_id = #clicky.settings.windows + 1
@@ -1569,9 +1515,7 @@ local function render_buttons_window(window)
                 end
                 local newButtonPos = { x = 0, y = max_y + 1 }
                 if not button_exists_at_position(window.buttons, newButtonPos) then
-                    
                     table.insert(window.buttons, { name = 'New', commands = { { command = "", delay = 0 } }, pos = newButtonPos })
-                    
                     save_job_settings(clicky.settings, last_job_id)
                 end
             end
@@ -1614,8 +1558,8 @@ local function render_buttons_window(window)
                 end
             elseif imgui.IsItemClicked(1) and not edit_mode then
                 -- Normal mode: execute right-click commands
-                for cmdIndex, cmdInfo in ipairs(button.commands) do
-                    update_command(button, cmdIndex,true)
+                for cmdIndex, cmdInfo in ipairs(button.right_click_commands) do
+                    update_command(button, true)
                 end
 
                 execute_commands(button.right_click_commands)
@@ -1837,5 +1781,3 @@ for _, window in ipairs(clicky.settings.windows) do
     UpdateVisibility(window.id, window.visible)
 end
 isRendering = true
-
-
