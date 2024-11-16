@@ -35,10 +35,9 @@ Clicky is an addon for Final Fantasy XI that allows players to create and custom
 1. Download the latest release of Clicky from the GitHub repository.
 2. Extract the contents to your `Ashita\addons\clicky` directory.
 3. Load the addon in-game using the Ashita command:
+  `/addon load clicky`
 
-   ```bash
-   /addon load clicky
-🚀 Usage
+## 🚀 Usage
 Basic Usage
 Load the addon using:
 
@@ -61,56 +60,35 @@ Multi-Click Commands
 Left-Click: Executes the primary command (e.g., casting a spell or using an ability).
 Right-Click: Executes an alternative command (e.g., using a different ability or item).
 Middle-Click: Used for advanced commands, such as multi-send for dual-boxing setups.
-🔍 Example Commands
-plaintext
-Copy code
-/clicky show 1
-/clicky hide 1
-/clicky addnew
-/clicky edit on
-/clicky edit off
-/clicky
-/clicky save
+## 🔍 Example Commands
+
+- /clicky show 1
+- /clicky hide 1
+- /clicky addnew
+- /clicky edit on
+- /clicky edit off
+- /clicky
+- /clicky save
+
 Advanced Command Examples
-plaintext
-Copy code
-/ma "Cure IV" <t>           # Cast Cure IV on target
-/ja "Provoke" <t>           # Use Provoke on target
-/ws "Savage Blade" <t>      # Execute Savage Blade weapon skill
-/equipset 1                 # Equip equipment set 1
-/item "Hi-Potion" <me>      # Use Hi-Potion on self
-/mso /ma "Cure IV" [p1]     # Cast Cure IV on party member (dual-boxing)
-🗂️ Profiles and Job-Specific Settings
+- /ma "Cure IV" <t>           # Cast Cure IV on target
+- /ja "Provoke" <t>           # Use Provoke on target
+- /ws "Savage Blade" <t>      # Execute Savage Blade weapon skill
+- /equipset 1                 # Equip equipment set 1
+- /item "Hi-Potion" <me>      # Use Hi-Potion on self
+- /mso /ma "Cure IV" [p1]     # Cast Cure IV on party member (dual-boxing)
+## 🗂️ Profiles and Job-Specific Settings
 Clicky automatically loads settings based on the player’s main job. Each job has its own profile, allowing for unique setups per job. Changes are saved automatically when switching jobs or can be manually saved using:
 
-bash
-Copy code
-/clicky save
-🐞 Known Issues
+
+`/clicky save`
+## 🐞 Known Issues
+
 If the job ID is 0 (e.g., during login or character change), Clicky retains the previous settings to avoid issues.
 Minor visual glitches may occur if windows overlap when edit mode is enabled.
-📜 License
+
+## 📜 License
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-❤️ Contributing
+## ❤️ Contributing
 Contributions are welcome! If you find any issues or have suggestions, please open an issue on the GitHub repository.
-
-Enjoy your enhanced gameplay with Clicky! If you encounter any issues, feel free to report them on the GitHub repository.
-
-markdown
-Copy code
-
-This version uses full Markdown features, including:
-
-- Proper headers (`#`, `##`, `###`)
-- Code blocks (with triple backticks)
-- Tables for commands
-- Emojis for improved readability
-- Section dividers and lists
-
-This structure will look nice on GitHub and other Markdown viewers. Let me know if you need any more changes!
-
-
-
-
-
